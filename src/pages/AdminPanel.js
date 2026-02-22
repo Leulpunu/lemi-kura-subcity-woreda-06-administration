@@ -1,6 +1,6 @@
 // src/pages/AdminPanel.js
 import React, { useState, useEffect } from 'react';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
+import {Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar, Line, Pie } from 'react-chartjs-2';
 import { officesData } from '../data/offices';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,6 +12,7 @@ const AdminPanel = ({ language, toggleLanguage }) => {
     const { createUser } = useAuth();
     const [reports, setReports] = useState([]);
     const [users, setUsers] = useState([]);
+    const [plans, setPlans] = useState([]);
     const [selectedOffice, setSelectedOffice] = useState('all');
     const [timeRange, setTimeRange] = useState('monthly');
     const [showUserForm, setShowUserForm] = useState(false);
@@ -34,7 +35,20 @@ const AdminPanel = ({ language, toggleLanguage }) => {
         // Load users
         const savedUsers = JSON.parse(localStorage.getItem('users') || '[]');
         setUsers(savedUsers);
+
+        // Load annual plans
+        const savedPlans = JSON.parse(localStorage.getItem('annualPlans') || '[]');
+        setPlans(savedPlans);
     }, []);
+
+    // Get target from saved plans
+    const getTargetFromPlan = (officeId, taskId, kpiId) => {
+        const plan = plans.find(p => p.officeId === officeId && p.taskId === taskId);
+        if (plan && plan.annualTargets && plan.annualTargets[kpiId]) {
+            return plan.annualTargets[kpiId];
+        }
+        return 1; // Default target if no plan found
+    };
 
     // Filter reports based on time range
     const filterReportsByTimeRange = (reports) => {
@@ -70,13 +84,12 @@ const AdminPanel = ({ language, toggleLanguage }) => {
             let kpiCount = 0;
 
             officeReports.forEach(report => {
-                Object.values(report.data).forEach(kpi => {
-                    const officeTask = office.tasks.find(t =>
-                        t.kpis.some(k => k.id === kpi.kpiId)
-                    );
-                    if (officeTask) {
-                        const kpiTarget = officeTask.kpis.find(k => k.id === kpi.kpiId)?.target || 1;
-                        totalProgress += (kpi.value / kpiTarget) * 100;
+                Object.keys(report.data).forEach(kpiId => {
+                    const kpiData = report.data[kpiId];
+                    // Get target from saved plan
+                    const target = getTargetFromPlan(office.id, report.taskId, kpiId);
+                    if (target > 0) {
+                        totalProgress += (kpiData.value / target) * 100;
                         kpiCount++;
                     }
                 });
@@ -181,6 +194,41 @@ const AdminPanel = ({ language, toggleLanguage }) => {
                         }
                     }} />
                 </div>
+            </div>
+
+            {/* Annual Plans Overview */}
+            <div className="admin-section">
+                <h2>{language === 'am' ? 'የአመት እቅዶች' : 'Annual Plans'}</h2>
+                {plans.length === 0 ? (
+                    <p>{language === 'am' ? 'ምንም እቅድ የለም' : 'No annual plans found'}</p>
+                ) : (
+                    <div className="reports-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>{language === 'am' ? 'አመት' : 'Year'}</th>
+                                    <th>{language === 'am' ? 'ቢሮ' : 'Office'}</th>
+                                    <th>{language === 'am' ? 'ተግባር' : 'Task'}</th>
+                                    <th>{language === 'am' ? 'ኪፒአይዎች' : 'KPIs'}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {plans.slice(0, 10).map(plan => {
+                                    const office = officesData.find(o => o.id === plan.officeId);
+                                    const task = office?.tasks.find(t => t.id === plan.taskId);
+                                    return (
+                                        <tr key={plan.id}>
+                                            <td>{plan.year}</td>
+                                            <td>{language === 'am' ? office?.name_am : office?.name_en}</td>
+                                            <td>{language === 'am' ? task?.title_am : task?.title_en}</td>
+                                            <td>{Object.keys(plan.annualTargets || {}).length}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
 
             {/* User Activity */}
