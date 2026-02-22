@@ -158,11 +158,13 @@ const AnnualPlan = ({ language, toggleLanguage }) => {
             required
           >
             <option value="">{language === 'am' ? 'ቢሮ ይምረጡ' : 'Select Office'}</option>
-            {officesData.map(office => (
-              <option key={office.id} value={office.id}>
-                {language === 'am' ? office.name_am : office.name_en}
-              </option>
-            ))}
+            {officesData
+              .filter(office => user && user.accessibleOffices && user.accessibleOffices.includes(office.id))
+              .map(office => (
+                <option key={office.id} value={office.id}>
+                  {language === 'am' ? office.name_am : office.name_en}
+                </option>
+              ))}
           </select>
         </div>
 
