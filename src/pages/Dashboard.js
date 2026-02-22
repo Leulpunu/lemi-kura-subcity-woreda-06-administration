@@ -139,7 +139,7 @@ const Dashboard = ({ language, toggleLanguage }) => {
                                 <i className="fas fa-tachometer-alt"></i>
                                 {language === 'am' ? 'አጠቃላይ እይታ' : 'Overview'}
                             </Link>
-                            {user.role !== 'admin' && (
+                            {(user.role === 'user' || user.role === 'sub_admin') && (
                                 <Link to="/report" className="nav-item" onClick={() => setIsNavOpen(false)}>
                                     <i className="fas fa-plus"></i>
                                     {language === 'am' ? 'አዲስ ሪፖርት' : 'New Report'}

@@ -23,6 +23,17 @@ export const AuthProvider = ({ children }) => {
             accessibleOffices: ['work-skills', 'urban-agriculture', 'trade', 'peace-security', 'finance', 'community-governance', 'civil-registration', 'public-service-hr-development', 'party-works']
         },
         {
+            id: 10,
+            username: 'subadmin',
+            password: 'sub123',
+            name: 'ለጠቅላላ አመራሩ የፓርቲ ስራዎች',
+            position_am: 'ለጠቅላላ አመራሩ የፓርቲ ስራዎች',
+            position_en: 'Party Works General Administration',
+            office: 'party-works',
+            role: 'sub_admin',
+            accessibleOffices: ['work-skills', 'urban-agriculture', 'trade', 'peace-security', 'finance', 'community-governance', 'civil-registration', 'public-service-hr-development', 'party-works']
+        },
+        {
             id: 2,
             username: 'workskills',
             password: 'ws123',
