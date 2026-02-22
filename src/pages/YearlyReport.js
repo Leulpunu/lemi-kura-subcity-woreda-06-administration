@@ -1,4 +1,3 @@
-// src/pages/YearlyReport.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { officesData } from '../data/offices';
@@ -11,13 +10,29 @@ const YearlyReport = ({ language }) => {
     const [selectedTask, setSelectedTask] = useState('');
     const [reportData, setReportData] = useState({});
     const [year, setYear] = useState(new Date().getFullYear().toString());
+    const [savedPlans, setSavedPlans] = useState([]);
+    const [selectedPlan, setSelectedPlan] = useState(null);
     const navigate = useNavigate();
+
+    // Load saved plans from localStorage
+    useEffect(() => {
+        const plans = JSON.parse(localStorage.getItem('annualPlans') || '[]');
+        setSavedPlans(plans);
+    }, []);
+
+    // Filter plans for the selected office and task
+    const filteredPlans = savedPlans.filter(plan => 
+        plan.officeId === selectedOffice && 
+        plan.taskId === selectedTask &&
+        plan.year === parseInt(year)
+    );
 
     const translations = {
         am: {
             title: 'አመታዊ ሪፖርት',
             selectOffice: 'ቢሮ ይምረጡ',
             selectTask: 'ተግባር ይምረጡ',
+            selectPlan: 'እቅድ ይምረጡ',
             year: 'አመት',
             value: 'ዋጋ',
             unit: 'አሃድ',
@@ -25,12 +40,14 @@ const YearlyReport = ({ language }) => {
             progress: 'እድገት',
             notes: 'ማስታወሻ',
             submit: 'ሪፖርት አስገባ',
-            cancel: 'ሰርዝ'
+            cancel: 'ሰርዝ',
+            noPlan: 'ለዚህ አመት እቅድ የለም'
         },
         en: {
             title: 'Yearly Report',
             selectOffice: 'Select Office',
             selectTask: 'Select Task',
+            selectPlan: 'Select Plan',
             year: 'Year',
             value: 'Value',
             unit: 'Unit',
@@ -38,7 +55,8 @@ const YearlyReport = ({ language }) => {
             progress: 'Progress',
             notes: 'Notes',
             submit: 'Submit Report',
-            cancel: 'Cancel'
+            cancel: 'Cancel',
+            noPlan: 'No plan for this year'
         }
     };
 
@@ -66,6 +84,7 @@ const YearlyReport = ({ language }) => {
             year: year,
             officeId: selectedOffice,
             taskId: selectedTask,
+            planId: selectedPlan?.id,
             userId: user.id,
             userName: user.name,
             data: reportData,
@@ -82,6 +101,25 @@ const YearlyReport = ({ language }) => {
         navigate('/dashboard');
     };
 
+    // Get the current task KPIs
+    const taskKpis = office?.tasks.find(t => t.id === selectedTask)?.kpis || [];
+
+    // Get unit from plan or use default
+    const getUnit = (kpiId) => {
+        if (selectedPlan && selectedPlan.kpiUnits && selectedPlan.kpiUnits[kpiId]) {
+            return selectedPlan.kpiUnits[kpiId];
+        }
+        return '-';
+    };
+
+    // Get target from plan
+    const getTarget = (kpiId) => {
+        if (selectedPlan && selectedPlan.annualTargets && selectedPlan.annualTargets[kpiId]) {
+            return selectedPlan.annualTargets[kpiId];
+        }
+        return 0;
+    };
+
     return (
         <div className="report-form">
             <div className="report-header">
@@ -89,13 +127,6 @@ const YearlyReport = ({ language }) => {
                     <i className="fas fa-arrow-left"></i> {language === 'am' ? 'ወደ ዳሽቦርድ ተመለስ' : 'Back to Dashboard'}
                 </button>
                 <h1>{t.title}</h1>
-                <button
-                    onClick={toggleLanguage}
-                    className="language-toggle"
-                    title={language === 'am' ? 'Switch to English' : 'አማርኛ ቀይር'}
-                >
-                    {language === 'am' ? 'EN' : 'አማ'}
-                </button>
             </div>
 
             <form onSubmit={handleSubmit}>
@@ -119,17 +150,16 @@ const YearlyReport = ({ language }) => {
                             setSelectedOffice(e.target.value);
                             setSelectedTask('');
                             setReportData({});
+                            setSelectedPlan(null);
                         }}
                         required
                     >
                         <option value="">{language === 'am' ? '-- ቢሮ ይምረጡ --' : '-- Select Office --'}</option>
-                        {officesData
-                            .filter(office => user && user.accessibleOffices && user.accessibleOffices.includes(office.id))
-                            .map(office => (
-                                <option key={office.id} value={office.id}>
-                                    {language === 'am' ? office.name_am : office.name_en}
-                                </option>
-                            ))}
+                        {officesData.map(office => (
+                            <option key={office.id} value={office.id}>
+                                {language === 'am' ? office.name_am : office.name_en}
+                            </option>
+                        ))}
                     </select>
                 </div>
 
@@ -138,7 +168,11 @@ const YearlyReport = ({ language }) => {
                         <label>{t.selectTask}</label>
                         <select
                             value={selectedTask}
-                            onChange={(e) => setSelectedTask(e.target.value)}
+                            onChange={(e) => {
+                                setSelectedTask(e.target.value);
+                                setReportData({});
+                                setSelectedPlan(null);
+                            }}
                             required
                         >
                             <option value="">{language === 'am' ? '-- ተግባር ይምረጡ --' : '-- Select Task --'}</option>
@@ -151,16 +185,42 @@ const YearlyReport = ({ language }) => {
                     </div>
                 )}
 
-                {selectedTask && office && (
+                {selectedOffice && selectedTask && filteredPlans.length > 0 && (
+                    <div className="form-group">
+                        <label>{t.selectPlan}</label>
+                        <select
+                            value={selectedPlan?.id || ''}
+                            onChange={(e) => {
+                                const plan = filteredPlans.find(p => p.id === parseInt(e.target.value));
+                                setSelectedPlan(plan);
+                                setReportData({});
+                            }}
+                            required
+                        >
+                            <option value="">{language === 'am' ? '-- እቅድ ይምረጡ --' : '-- Select Plan --'}</option>
+                            {filteredPlans.map(plan => (
+                                <option key={plan.id} value={plan.id}>
+                                    {language === 'am' ? 'እቅድ' : 'Plan'} #{plan.id} - {plan.year}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
+                {selectedOffice && selectedTask && filteredPlans.length === 0 && (
+                    <div className="form-group">
+                        <p style={{ color: 'orange' }}>{t.noPlan}</p>
+                    </div>
+                )}
+
+                {selectedTask && office && selectedPlan && (
                     <div className="kpi-inputs">
                         <h3>{language === 'am' ? 'ኪፒአይ ውሂብ አስገባ' : 'Enter KPI Data'}</h3>
-                        {office.tasks
-                            .find(t => t.id === selectedTask)
-                            .kpis.map(kpi => (
+                        {taskKpis.map(kpi => (
                                 <div key={kpi.id} className="kpi-input-group">
                                     <label>
                                         {language === 'am' ? kpi.name_am : kpi.name_en}
-                                        <span className="unit">({kpi.unit})</span>
+                                        <span className="unit">({getUnit(kpi.id)})</span>
                                     </label>
                                     <div className="input-with-target">
                                         <input
@@ -171,22 +231,43 @@ const YearlyReport = ({ language }) => {
                                             required
                                         />
                                         <span className="target-display">
-                                            {language === 'am' ? 'ዒላማ' : 'Target'}: {kpi.target.toLocaleString()}
+                                            {language === 'am' ? 'ዒላማ' : 'Target'}: {getTarget(kpi.id).toLocaleString()}
                                         </span>
                                     </div>
-                                    {reportData[kpi.id]?.value && (
+                                    {reportData[kpi.id]?.value && getTarget(kpi.id) > 0 && (
                                         <div className="progress-indicator">
                                             <div className="progress-bar">
                                                 <div
                                                     className="progress-fill"
                                                     style={{
-                                                        width: `${Math.min((reportData[kpi.id].value / kpi.target) * 100, 100)}%`
+                                                        width: `${Math.min((reportData[kpi.id].value / getTarget(kpi.id)) * 100, 100)}%`
                                                     }}
                                                 ></div>
                                             </div>
-                                            <span>{((reportData[kpi.id].value / kpi.target) * 100).toFixed(1)}%</span>
+                                            <span>{((reportData[kpi.id].value / getTarget(kpi.id)) * 100).toFixed(1)}%</span>
                                         </div>
                                     )}
+                                </div>
+                            ))
+                        }
+                    </div>
+                )}
+
+                {selectedTask && office && !selectedPlan && (
+                    <div className="kpi-inputs">
+                        <h3>{language === 'am' ? 'ኪፒአይ ውሂብ አስገባ' : 'Enter KPI Data'}</h3>
+                        {taskKpis.map(kpi => (
+                                <div key={kpi.id} className="kpi-input-group">
+                                    <label>
+                                        {language === 'am' ? kpi.name_am : kpi.name_en}
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={reportData[kpi.id]?.value || ''}
+                                        onChange={(e) => handleKPIChange(kpi.id, e.target.value)}
+                                        placeholder={language === 'am' ? 'ዋጋ ያስገቡ' : 'Enter value'}
+                                        required
+                                    />
                                 </div>
                             ))
                         }

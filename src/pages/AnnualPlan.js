@@ -9,6 +9,7 @@ const AnnualPlan = ({ language, toggleLanguage }) => {
   const [selectedOffice, setSelectedOffice] = useState('');
   const [selectedTask, setSelectedTask] = useState('');
   const [annualTargets, setAnnualTargets] = useState({});
+  const [kpiUnits, setKpiUnits] = useState({});
   const [distributedPlans, setDistributedPlans] = useState({
     monthly: {},
     weekly: {},
@@ -22,12 +23,14 @@ const AnnualPlan = ({ language, toggleLanguage }) => {
     setSelectedOffice(e.target.value);
     setSelectedTask('');
     setAnnualTargets({});
+    setKpiUnits({});
     setIsDistributed(false);
   };
 
   const handleTaskChange = (e) => {
     setSelectedTask(e.target.value);
     setAnnualTargets({});
+    setKpiUnits({});
     setIsDistributed(false);
   };
 
@@ -35,6 +38,13 @@ const AnnualPlan = ({ language, toggleLanguage }) => {
     setAnnualTargets(prev => ({
       ...prev,
       [kpiId]: parseFloat(value) || 0
+    }));
+  };
+
+  const handleKpiUnitChange = (kpiId, value) => {
+    setKpiUnits(prev => ({
+      ...prev,
+      [kpiId]: value
     }));
   };
 
@@ -49,12 +59,18 @@ const AnnualPlan = ({ language, toggleLanguage }) => {
   };
 
   const distributePlan = () => {
-    // Check if all annual targets are entered
+    // Check if all annual targets and units are entered
     const kpis = selectedTaskData?.kpis || [];
     const hasAllTargets = kpis.every(kpi => annualTargets[kpi.id] && annualTargets[kpi.id] > 0);
+    const hasAllUnits = kpis.every(kpi => kpiUnits[kpi.id] && kpiUnits[kpi.id].trim() !== '');
     
     if (!hasAllTargets) {
       alert(language === 'am' ? 'እባክዎ ሁሉንም አመታዊ ዒላማዎች ያስገቡ' : 'Please enter all annual targets');
+      return;
+    }
+    
+    if (!hasAllUnits) {
+      alert(language === 'am' ? 'እባክዎ ሁሉንም አሃዶች ያስገቡ' : 'Please enter all units');
       return;
     }
 
@@ -95,6 +111,7 @@ const AnnualPlan = ({ language, toggleLanguage }) => {
       officeId: selectedOffice,
       taskId: selectedTask,
       annualTargets,
+      kpiUnits,
       distributedPlans,
       year: new Date().getFullYear(),
       submittedBy: user.id,
@@ -175,8 +192,19 @@ const AnnualPlan = ({ language, toggleLanguage }) => {
             <h3>{language === 'am' ? 'አመታዊ የግብ አላማዎች' : 'Annual Targets'}</h3>
             {selectedTaskData.kpis.map(kpi => (
               <div key={kpi.id} className="form-group">
+                <label htmlFor={`unit-${kpi.id}`}>
+                  {language === 'am' ? kpi.name_am : kpi.name_en} - {language === 'am' ? 'አሃድ (Unit)' : 'Unit'}:
+                </label>
+                <input
+                  type="text"
+                  id={`unit-${kpi.id}`}
+                  value={kpiUnits[kpi.id] || ''}
+                  onChange={(e) => handleKpiUnitChange(kpi.id, e.target.value)}
+                  placeholder={language === 'am' ? 'አሃድ ያስገቡ (ሰዎች, ኪሎ ግራም...)' : 'Enter unit (persons, kg, etc.)'}
+                  required
+                />
                 <label htmlFor={`annual-${kpi.id}`}>
-                  {language === 'am' ? kpi.name_am : kpi.name_en} ({kpi.unit}):
+                  {language === 'am' ? kpi.name_am : kpi.name_en} - {language === 'am' ? 'ዒላማ (Target)' : 'Target'}:
                 </label>
                 <input
                   type="number"
@@ -226,7 +254,7 @@ const AnnualPlan = ({ language, toggleLanguage }) => {
                 {selectedTaskData.kpis.map(kpi => (
                   <div key={kpi.id} className="form-group">
                     <label htmlFor={`monthly-${kpi.id}`}>
-                      {language === 'am' ? kpi.name_am : kpi.name_en} ({kpi.unit}):
+                      {language === 'am' ? kpi.name_am : kpi.name_en} ({kpiUnits[kpi.id] || '-'}):
                     </label>
                     <input
                       type="number"
@@ -246,7 +274,7 @@ const AnnualPlan = ({ language, toggleLanguage }) => {
                 {selectedTaskData.kpis.map(kpi => (
                   <div key={kpi.id} className="form-group">
                     <label htmlFor={`weekly-${kpi.id}`}>
-                      {language === 'am' ? kpi.name_am : kpi.name_en} ({kpi.unit}):
+                      {language === 'am' ? kpi.name_am : kpi.name_en} ({kpiUnits[kpi.id] || '-'}):
                     </label>
                     <input
                       type="number"
@@ -266,7 +294,7 @@ const AnnualPlan = ({ language, toggleLanguage }) => {
                 {selectedTaskData.kpis.map(kpi => (
                   <div key={kpi.id} className="form-group">
                     <label htmlFor={`daily-${kpi.id}`}>
-                      {language === 'am' ? kpi.name_am : kpi.name_en} ({kpi.unit}):
+                      {language === 'am' ? kpi.name_am : kpi.name_en} ({kpiUnits[kpi.id] || '-'}):
                     </label>
                     <input
                       type="number"

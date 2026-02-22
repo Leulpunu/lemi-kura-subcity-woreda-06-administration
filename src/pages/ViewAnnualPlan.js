@@ -1,80 +1,148 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { officesData } from '../data/offices';
-import { useAuth } from '../contexts/AuthContext';
 import '../styles/ReportForm.css';
 
-const ViewAnnualPlan = ({ language, toggleLanguage }) => {
-  const { user } = useAuth();
-  const [plans, setPlans] = useState([]);
-  const navigate = useNavigate();
+const ViewAnnualPlan = ({ language }) => {
+    const { officeId, taskId } = useParams();
+    const [plans, setPlans] = useState([]);
+    const [selectedPlan, setSelectedPlan] = useState(null);
+    const navigate = useNavigate();
 
-  useEffect(() => {
-    const existingPlans = JSON.parse(localStorage.getItem('annualPlans') || '[]');
-    const userPlans = existingPlans.filter(plan => plan.officeId === user.accessibleOffices[0]);
-    setPlans(userPlans);
-  }, [user]);
+    useEffect(() => {
+        const savedPlans = JSON.parse(localStorage.getItem('annualPlans') || '[]');
+        setPlans(savedPlans);
+        
+        if (officeId && taskId) {
+            const filtered = savedPlans.filter(p => p.officeId === officeId && p.taskId === taskId);
+            if (filtered.length > 0) {
+                setSelectedPlan(filtered[0]);
+            }
+        }
+    }, [officeId, taskId]);
 
-  return (
-    <div className="daily-report">
-      <div className="report-header">
-        <button onClick={() => navigate('/dashboard')} className="btn-secondary back-button">
-          <i className="fas fa-arrow-left"></i> {language === 'am' ? 'ወደ ዳሽቦርድ ተመለስ' : 'Back to Dashboard'}
-        </button>
-        <h1>{language === 'am' ? 'አመታዊ እቅድ ይዩ' : 'View Annual Plan'}</h1>
-        <button
-          onClick={toggleLanguage}
-          className="language-toggle"
-          title={language === 'am' ? 'Switch to English' : 'አማርኛ ቀይር'}
-        >
-          {language === 'am' ? 'EN' : 'አማ'}
-        </button>
-      </div>
+    const office = officesData.find(o => o.id === (selectedPlan?.officeId || officeId));
+    const task = office?.tasks.find(t => t.id === (selectedPlan?.taskId || taskId));
 
-      <div className="report-form">
-        {plans.length === 0 ? (
-          <p>{language === 'am' ? 'እቅድ አልተለመደም' : 'No plans found'}</p>
-        ) : (
-          plans.map(plan => {
-            const office = officesData.find(o => o.id === plan.officeId);
-            const task = office?.tasks.find(t => t.id === plan.taskId);
-            return (
-              <div key={plan.id} className="plan-item">
-                <h3>{language === 'am' ? office?.name_am : office?.name_en} - {language === 'am' ? task?.title_am : task?.title_en}</h3>
-                <p>{language === 'am' ? 'አመት' : 'Year'}: {plan.year}</p>
-                <div className="kpi-section">
-                  <h4>{language === 'am' ? 'አመታዊ የግብ አላማዎች' : 'Annual Targets'}</h4>
-                  {task?.kpis.map(kpi => (
-                    <p key={kpi.id}>{language === 'am' ? kpi.name_am : kpi.name_en}: {plan.annualTargets[kpi.id]} {kpi.unit}</p>
-                  ))}
+    const translations = {
+        am: {
+            title: 'እቅድ ይመልከቱ',
+            selectPlan: 'እቅድ ይምረጡ',
+            annualTargets: 'አመታዊ የግብ አላማዎች',
+            monthlyPlan: 'ወራዊ እቅድ',
+            weeklyPlan: 'ሳምንታዊ እቅድ',
+            dailyPlan: 'ዕለታዊ እቅድ',
+            noPlan: 'ምንም እቅድ የለም',
+            back: 'ወደ ዳሽቦርድ'
+        },
+        en: {
+            title: 'View Annual Plan',
+            selectPlan: 'Select Plan',
+            annualTargets: 'Annual Targets',
+            monthlyPlan: 'Monthly Plan',
+            weeklyPlan: 'Weekly Plan',
+            dailyPlan: 'Daily Plan',
+            noPlan: 'No plans found',
+            back: 'Back to Dashboard'
+        }
+    };
+
+    const t = translations[language];
+
+    // Get unit from plan
+    const getUnit = (kpiId) => {
+        if (selectedPlan && selectedPlan.kpiUnits && selectedPlan.kpiUnits[kpiId]) {
+            return selectedPlan.kpiUnits[kpiId];
+        }
+        return '-';
+    };
+
+    if (plans.length === 0) {
+        return (
+            <div className="report-form">
+                <div className="report-header">
+                    <button onClick={() => navigate('/')} className="btn-secondary back-button">
+                        <i className="fas fa-arrow-left"></i> {t.back}
+                    </button>
+                    <h1>{t.title}</h1>
                 </div>
-                <div className="plan-distribution">
-                  <div className="plan-section">
-                    <h4>{language === 'am' ? 'ወራዊ እቅድ' : 'Monthly Plan'}</h4>
-                    {task?.kpis.map(kpi => (
-                      <p key={kpi.id}>{language === 'am' ? kpi.name_am : kpi.name_en}: {plan.distributedPlans.monthly[kpi.id]} {kpi.unit}</p>
+                <p>{t.noPlan}</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="report-form">
+            <div className="report-header">
+                <button onClick={() => navigate('/')} className="btn-secondary back-button">
+                    <i className="fas fa-arrow-left"></i> {t.back}
+                </button>
+                <h1>{t.title}</h1>
+            </div>
+
+            <div className="form-group">
+                <label>{t.selectPlan}</label>
+                <select
+                    value={selectedPlan?.id || ''}
+                    onChange={(e) => {
+                        const plan = plans.find(p => p.id === parseInt(e.target.value));
+                        setSelectedPlan(plan);
+                    }}
+                >
+                    <option value="">{language === 'am' ? '-- እቅድ ይምረጡ --' : '-- Select Plan --'}</option>
+                    {plans.map(plan => (
+                        <option key={plan.id} value={plan.id}>
+                            {plan.year} - {officesData.find(o => o.id === plan.officeId)?.[language === 'am' ? 'name_am' : 'name_en']}
+                        </option>
                     ))}
-                  </div>
-                  <div className="plan-section">
-                    <h4>{language === 'am' ? 'ሳምንታዊ እቅድ' : 'Weekly Plan'}</h4>
-                    {task?.kpis.map(kpi => (
-                      <p key={kpi.id}>{language === 'am' ? kpi.name_am : kpi.name_en}: {plan.distributedPlans.weekly[kpi.id]} {kpi.unit}</p>
-                    ))}
-                  </div>
-                  <div className="plan-section">
-                    <h4>{language === 'am' ? 'ዕለታዊ እቅድ' : 'Daily Plan'}</h4>
-                    {task?.kpis.map(kpi => (
-                      <p key={kpi.id}>{language === 'am' ? kpi.name_am : kpi.name_en}: {plan.distributedPlans.daily[kpi.id]} {kpi.unit}</p>
-                    ))}
-                  </div>
+                </select>
+            </div>
+
+            {selectedPlan && task && (
+                <div className="plan-details">
+                    <div className="kpi-section">
+                        <h4>{t.annualTargets}</h4>
+                        {task.kpis.map(kpi => (
+                            <p key={kpi.id}>
+                                {language === 'am' ? kpi.name_am : kpi.name_en}: 
+                                {selectedPlan.annualTargets[kpi.id]} {getUnit(kpi.id)}
+                            </p>
+                        ))}
+                    </div>
+
+                    <div className="kpi-section">
+                        <h4>{t.monthlyPlan}</h4>
+                        {task.kpis.map(kpi => (
+                            <p key={kpi.id}>
+                                {language === 'am' ? kpi.name_am : kpi.name_en}: 
+                                {selectedPlan.distributedPlans?.monthly?.[kpi.id]?.toFixed(2)} {getUnit(kpi.id)}
+                            </p>
+                        ))}
+                    </div>
+
+                    <div className="kpi-section">
+                        <h4>{t.weeklyPlan}</h4>
+                        {task.kpis.map(kpi => (
+                            <p key={kpi.id}>
+                                {language === 'am' ? kpi.name_am : kpi.name_en}: 
+                                {selectedPlan.distributedPlans?.weekly?.[kpi.id]?.toFixed(2)} {getUnit(kpi.id)}
+                            </p>
+                        ))}
+                    </div>
+
+                    <div className="kpi-section">
+                        <h4>{t.dailyPlan}</h4>
+                        {task.kpis.map(kpi => (
+                            <p key={kpi.id}>
+                                {language === 'am' ? kpi.name_am : kpi.name_en}: 
+                                {selectedPlan.distributedPlans?.daily?.[kpi.id]?.toFixed(2)} {getUnit(kpi.id)}
+                            </p>
+                        ))}
+                    </div>
                 </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
+            )}
+        </div>
+    );
 };
 
 export default ViewAnnualPlan;
