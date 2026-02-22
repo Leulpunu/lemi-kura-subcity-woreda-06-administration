@@ -1,0 +1,100 @@
+.office-kpis {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.office-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.office-header h1 {
+  color: #2c3e50;
+  margin: 0;
+  font-size: 2rem;
+}
+
+.kpis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 20px;
+}
+
+.task-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
+}
+
+.task-card h3 {
+  color: #34495e;
+  margin: 0 0 15px 0;
+  font-size: 1.3rem;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 10px;
+}
+
+.kpis-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.kpi-item {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 6px;
+  border-left: 4px solid #3498db;
+}
+
+.kpi-name {
+  font-weight: bold;
+  color: #2c3e50;
+  margin-bottom: 8px;
+  font-size: 1.1rem;
+}
+
+.kpi-target,
+.kpi-unit {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+  margin: 2px 0;
+}
+
+.btn-secondary {
+  background: #95a5a6;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s;
+}
+
+.btn-secondary:hover {
+  background: #7f8c8d;
+}
+
+@media (max-width: 768px) {
+  .office-header {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+  }
+
+  .kpis-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .office-header h1 {
+    font-size: 1.5rem;
+  }
+}

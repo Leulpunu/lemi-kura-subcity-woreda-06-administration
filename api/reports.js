@@ -1,0 +1,181 @@
+const express = require('express');
+const mongoose = require('mongoose');
+
+// Connect to MongoDB
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/kpi-system');
+    console.log('MongoDB connected');
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+  }
+};
+
+// Report Schema
+const reportSchema = new mongoose.Schema({
+  officeId: { type: String, required: true },
+  taskId: { type: String, required: true },
+  kpiId: { type: String, required: true },
+  value: { type: Number, required: true },
+  date: { type: Date, default: Date.now },
+  userId: { type: Number, required: true },
+}, { timestamps: true });
+
+const Report = mongoose.model('Report', reportSchema);
+
+// Annual Plan Schema
+const annualPlanSchema = new mongoose.Schema({
+  officeId: { type: String, required: true },
+  taskId: { type: String, required: true },
+  annualTargets: {
+    type: Map,
+    of: Number,
+    required: true
+  },
+  distributedPlans: {
+    monthly: { type: Map, of: Number },
+    weekly: { type: Map, of: Number },
+    daily: { type: Map, of: Number }
+  },
+  year: { type: Number, required: true },
+  submittedBy: { type: Number, required: true },
+  submittedAt: { type: Date, default: Date.now },
+  status: {
+    type: String,
+    enum: ['draft', 'submitted', 'approved', 'rejected'],
+    default: 'draft'
+  },
+  approvedBy: { type: Number },
+  approvedAt: { type: Date },
+  rejectionReason: { type: String }
+}, { timestamps: true });
+
+const AnnualPlan = mongoose.model('AnnualPlan', annualPlanSchema);
+
+const app = express();
+app.use(express.json());
+
+// Get stats for dashboard
+app.get('/api/reports/stats/:timeFrame/:selectedOffice?', async (req, res) => {
+  try {
+    await connectDB();
+    const { timeFrame, selectedOffice } = req.params;
+    const currentYear = new Date().getFullYear();
+    let dateFilter = {};
+
+    // Set date filter based on timeFrame
+    const now = new Date();
+    switch (timeFrame) {
+      case 'daily':
+        dateFilter = {
+          date: {
+            $gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+            $lt: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+          }
+        };
+        break;
+      case 'weekly':
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay());
+        weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 7);
+        dateFilter = {
+          date: { $gte: weekStart, $lt: weekEnd }
+        };
+        break;
+      case 'monthly':
+        dateFilter = {
+          date: {
+            $gte: new Date(now.getFullYear(), now.getMonth(), 1),
+            $lt: new Date(now.getFullYear(), now.getMonth() + 1, 1)
+          }
+        };
+        break;
+      case 'yearly':
+        dateFilter = {
+          date: {
+            $gte: new Date(currentYear, 0, 1),
+            $lt: new Date(currentYear + 1, 0, 1)
+          }
+        };
+        break;
+      default:
+        return res.status(400).json({ message: 'Invalid timeFrame' });
+    }
+
+    // Get reports for the period
+    let reportQuery = { ...dateFilter };
+    if (selectedOffice && selectedOffice !== 'all') {
+      reportQuery.officeId = selectedOffice;
+    }
+    const reports = await Report.find(reportQuery);
+
+    // Get annual plans for current year
+    let planQuery = { year: currentYear };
+    if (selectedOffice && selectedOffice !== 'all') {
+      planQuery.officeId = selectedOffice;
+    }
+    const annualPlans = await AnnualPlan.find(planQuery);
+
+    // Calculate stats
+    const officeSet = new Set();
+    let totalReports = reports.length;
+    let totalActual = 0;
+    let totalTarget = 0;
+    let performanceSum = 0;
+    let performanceCount = 0;
+
+    // Group reports by office and task
+    const reportGroups = {};
+    reports.forEach(report => {
+      officeSet.add(report.officeId);
+      const key = `${report.officeId}-${report.taskId}`;
+      if (!reportGroups[key]) reportGroups[key] = [];
+      reportGroups[key].push(report);
+    });
+
+    // Calculate for each office-task combination
+    Object.keys(reportGroups).forEach(key => {
+      const [officeId, taskId] = key.split('-');
+      const groupReports = reportGroups[key];
+      const actual = groupReports.reduce((sum, r) => sum + r.value, 0);
+
+      // Find corresponding annual plan
+      const plan = annualPlans.find(p => p.officeId === officeId && p.taskId === taskId);
+      let target = 0;
+      if (plan && plan.distributedPlans) {
+        const distributed = plan.distributedPlans[timeFrame];
+        if (distributed) {
+          // Sum all targets for this timeFrame
+          target = Array.from(distributed.values()).reduce((sum, val) => sum + val, 0);
+        }
+      }
+
+      totalActual += actual;
+      totalTarget += target;
+
+      if (target > 0) {
+        const performance = (actual / target) * 100;
+        performanceSum += performance;
+        performanceCount++;
+      }
+    });
+
+    const activeOffices = officeSet.size;
+    const avgPerformance = performanceCount > 0 ? performanceSum / performanceCount : 0;
+    const completionRate = totalTarget > 0 ? (totalActual / totalTarget) * 100 : 0;
+
+    res.json({
+      totalReports,
+      activeOffices,
+      avgPerformance: Math.round(avgPerformance * 100) / 100,
+      completionRate: Math.round(completionRate * 100) / 100
+    });
+  } catch (err) {
+    console.error('Error calculating stats:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+module.exports = app;
