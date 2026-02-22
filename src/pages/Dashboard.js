@@ -139,10 +139,12 @@ const Dashboard = ({ language, toggleLanguage }) => {
                                 <i className="fas fa-tachometer-alt"></i>
                                 {language === 'am' ? 'አጠቃላይ እይታ' : 'Overview'}
                             </Link>
-                            <Link to="/report" className="nav-item" onClick={() => setIsNavOpen(false)}>
-                                <i className="fas fa-plus"></i>
-                                {language === 'am' ? 'አዲስ ሪፖርት' : 'New Report'}
-                            </Link>
+                            {user.role !== 'admin' && (
+                                <Link to="/report" className="nav-item" onClick={() => setIsNavOpen(false)}>
+                                    <i className="fas fa-plus"></i>
+                                    {language === 'am' ? 'አዲስ ሪፖርት' : 'New Report'}
+                                </Link>
+                            )}
                             <Link to="/annual-plan" className="nav-item" onClick={() => setIsNavOpen(false)}>
                                 <i className="fas fa-calendar-alt"></i>
                                 {language === 'am' ? 'አመታዊ ዕቅድ' : 'Annual Plan'}
