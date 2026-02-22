@@ -836,7 +836,7 @@
     .mobile-menu-toggle {
         display: flex !important;
         position: absolute;
-        right: 1rem;
+        right: 5rem;
         top: 50%;
         transform: translateY(-50%);
         z-index: 1002;
@@ -845,6 +845,7 @@
     .header-right {
         gap: 0.5rem;
         z-index: 1001;
+        margin-right: 2.5rem;
     }
 
     .language-toggle {
