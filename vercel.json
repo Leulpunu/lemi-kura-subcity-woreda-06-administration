@@ -1,12 +1,10 @@
 {
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ]
+    { "source": "/api/:path*", "destination": "/api/:path*"},
+    { "source": "/:path*", "destination": "/index.html" }
+  ],
+  "env": {
+    "DATABASE_URL": "postgresql://neondb_owner:npg_Awke48RKBaVi@ep-weathered-rice-aia4pyx5-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require",
+    "JWT_SECRET": "your-secret-key-here"
+  }
 }

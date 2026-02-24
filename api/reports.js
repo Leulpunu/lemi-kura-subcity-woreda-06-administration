@@ -1,181 +1,86 @@
 const express = require('express');
-const mongoose = require('mongoose');
+const { neon } = require('@neondatabase/serverless');
 
-// Connect to MongoDB
-const connectDB = async () => {
+const sql = neon(process.env.DATABASE_URL);
+
+const router = express.Router();
+
+// Get all reports
+router.get('/', async (req, res) => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/kpi-system');
-    console.log('MongoDB connected');
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-  }
-};
-
-// Report Schema
-const reportSchema = new mongoose.Schema({
-  officeId: { type: String, required: true },
-  taskId: { type: String, required: true },
-  kpiId: { type: String, required: true },
-  value: { type: Number, required: true },
-  date: { type: Date, default: Date.now },
-  userId: { type: Number, required: true },
-}, { timestamps: true });
-
-const Report = mongoose.model('Report', reportSchema);
-
-// Annual Plan Schema
-const annualPlanSchema = new mongoose.Schema({
-  officeId: { type: String, required: true },
-  taskId: { type: String, required: true },
-  annualTargets: {
-    type: Map,
-    of: Number,
-    required: true
-  },
-  distributedPlans: {
-    monthly: { type: Map, of: Number },
-    weekly: { type: Map, of: Number },
-    daily: { type: Map, of: Number }
-  },
-  year: { type: Number, required: true },
-  submittedBy: { type: Number, required: true },
-  submittedAt: { type: Date, default: Date.now },
-  status: {
-    type: String,
-    enum: ['draft', 'submitted', 'approved', 'rejected'],
-    default: 'draft'
-  },
-  approvedBy: { type: Number },
-  approvedAt: { type: Date },
-  rejectionReason: { type: String }
-}, { timestamps: true });
-
-const AnnualPlan = mongoose.model('AnnualPlan', annualPlanSchema);
-
-const app = express();
-app.use(express.json());
-
-// Get stats for dashboard
-app.get('/api/reports/stats/:timeFrame/:selectedOffice?', async (req, res) => {
-  try {
-    await connectDB();
-    const { timeFrame, selectedOffice } = req.params;
-    const currentYear = new Date().getFullYear();
-    let dateFilter = {};
-
-    // Set date filter based on timeFrame
-    const now = new Date();
-    switch (timeFrame) {
-      case 'daily':
-        dateFilter = {
-          date: {
-            $gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
-            $lt: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
-          }
-        };
-        break;
-      case 'weekly':
-        const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() - now.getDay());
-        weekStart.setHours(0, 0, 0, 0);
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 7);
-        dateFilter = {
-          date: { $gte: weekStart, $lt: weekEnd }
-        };
-        break;
-      case 'monthly':
-        dateFilter = {
-          date: {
-            $gte: new Date(now.getFullYear(), now.getMonth(), 1),
-            $lt: new Date(now.getFullYear(), now.getMonth() + 1, 1)
-          }
-        };
-        break;
-      case 'yearly':
-        dateFilter = {
-          date: {
-            $gte: new Date(currentYear, 0, 1),
-            $lt: new Date(currentYear + 1, 0, 1)
-          }
-        };
-        break;
-      default:
-        return res.status(400).json({ message: 'Invalid timeFrame' });
-    }
-
-    // Get reports for the period
-    let reportQuery = { ...dateFilter };
-    if (selectedOffice && selectedOffice !== 'all') {
-      reportQuery.officeId = selectedOffice;
-    }
-    const reports = await Report.find(reportQuery);
-
-    // Get annual plans for current year
-    let planQuery = { year: currentYear };
-    if (selectedOffice && selectedOffice !== 'all') {
-      planQuery.officeId = selectedOffice;
-    }
-    const annualPlans = await AnnualPlan.find(planQuery);
-
-    // Calculate stats
-    const officeSet = new Set();
-    let totalReports = reports.length;
-    let totalActual = 0;
-    let totalTarget = 0;
-    let performanceSum = 0;
-    let performanceCount = 0;
-
-    // Group reports by office and task
-    const reportGroups = {};
-    reports.forEach(report => {
-      officeSet.add(report.officeId);
-      const key = `${report.officeId}-${report.taskId}`;
-      if (!reportGroups[key]) reportGroups[key] = [];
-      reportGroups[key].push(report);
-    });
-
-    // Calculate for each office-task combination
-    Object.keys(reportGroups).forEach(key => {
-      const [officeId, taskId] = key.split('-');
-      const groupReports = reportGroups[key];
-      const actual = groupReports.reduce((sum, r) => sum + r.value, 0);
-
-      // Find corresponding annual plan
-      const plan = annualPlans.find(p => p.officeId === officeId && p.taskId === taskId);
-      let target = 0;
-      if (plan && plan.distributedPlans) {
-        const distributed = plan.distributedPlans[timeFrame];
-        if (distributed) {
-          // Sum all targets for this timeFrame
-          target = Array.from(distributed.values()).reduce((sum, val) => sum + val, 0);
-        }
-      }
-
-      totalActual += actual;
-      totalTarget += target;
-
-      if (target > 0) {
-        const performance = (actual / target) * 100;
-        performanceSum += performance;
-        performanceCount++;
-      }
-    });
-
-    const activeOffices = officeSet.size;
-    const avgPerformance = performanceCount > 0 ? performanceSum / performanceCount : 0;
-    const completionRate = totalTarget > 0 ? (totalActual / totalTarget) * 100 : 0;
-
-    res.json({
-      totalReports,
-      activeOffices,
-      avgPerformance: Math.round(avgPerformance * 100) / 100,
-      completionRate: Math.round(completionRate * 100) / 100
-    });
+    const reports = await sql`SELECT * FROM reports ORDER BY created_at DESC`;
+    res.json(reports);
   } catch (err) {
-    console.error('Error calculating stats:', err);
     res.status(500).json({ message: err.message });
   }
 });
 
-module.exports = app;
+// Get report by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const reports = await sql`SELECT * FROM reports WHERE id = ${req.params.id}`;
+    if (reports.length === 0) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+    res.json(reports[0]);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Create report
+router.post('/', async (req, res) => {
+  try {
+    const { office_id, report_type, content, date, created_by } = req.body;
+    const maxIdResult = await sql`SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM reports`;
+    const nextId = maxIdResult[0].next_id;
+    
+    await sql`
+      INSERT INTO reports (id, office_id, report_type, content, date, created_by)
+      VALUES (${nextId}, ${office_id}, ${report_type}, ${JSON.stringify(content)}, ${date}, ${created_by})
+    `;
+    
+    res.status(201).json({ message: 'Report created' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Update report
+router.put('/:id', async (req, res) => {
+  try {
+    const { content } = req.body;
+    await sql`UPDATE reports SET content = ${JSON.stringify(content)} WHERE id = ${req.params.id}`;
+    res.json({ message: 'Report updated' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Delete report
+router.delete('/:id', async (req, res) => {
+  try {
+    await sql`DELETE FROM reports WHERE id = ${req.params.id}`;
+    res.json({ message: 'Report deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get report statistics
+router.get('/stats/summary', async (req, res) => {
+  try {
+    const result = await sql`
+      SELECT 
+        report_type,
+        COUNT(*) as count
+      FROM reports 
+      GROUP BY report_type
+    `;
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+module.exports = router;

@@ -1,5 +1,4 @@
 {
-  "$schema": "",
   "name": "ethiopian-kpi-system",
   "version": "1.0.0",
   "private": true,
@@ -19,7 +18,7 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "set PORT=5000 && react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
