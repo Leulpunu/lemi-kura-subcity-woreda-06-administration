@@ -1,104 +1,119 @@
 const express = require('express');
-const Report = require('../models/Report');
+const { sql } = require('../db');
 
 const router = express.Router();
 
-// Get reports
+// Get all reports - Using PostgreSQL
 router.get('/', async (req, res) => {
   try {
-    const reports = await Report.find().populate('userId');
+    const reports = await sql`
+      SELECT r.*, u.name as user_name, u.username 
+      FROM reports r 
+      LEFT JOIN users u ON r.user_id = u.id 
+      ORDER BY r.date DESC
+    `;
     res.json(reports);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// Create report
+// Create report - Using PostgreSQL
 router.post('/', async (req, res) => {
-  const report = new Report(req.body);
+  const { office_id, task_id, value, date, description, reported_by } = req.body;
+  
   try {
-    const newReport = await report.save();
-    res.status(201).json(newReport);
+    // Get next ID
+    const maxIdResult = await sql`SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM reports`;
+    const nextId = maxIdResult[0].next_id;
+    
+    const result = await sql`
+      INSERT INTO reports (id, office_id, task_id, value, date, description, reported_by, created_at)
+      VALUES (${nextId}, ${office_id}, ${task_id}, ${value}, ${date}, ${description}, ${reported_by}, NOW())
+      RETURNING *
+    `;
+    
+    res.status(201).json(result[0]);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 });
 
-// Get reports by office
+// Get reports by office - Using PostgreSQL
 router.get('/office/:officeId', async (req, res) => {
   try {
-    const reports = await Report.find({ officeId: req.params.officeId });
+    const reports = await sql`
+      SELECT * FROM reports 
+      WHERE office_id = ${req.params.officeId}
+      ORDER BY date DESC
+    `;
     res.json(reports);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// Get stats for dashboard
+// Get stats for dashboard - Using PostgreSQL
 router.get('/stats/:timeFrame/:selectedOffice', async (req, res) => {
   try {
     const { timeFrame, selectedOffice } = req.params;
     const currentYear = new Date().getFullYear();
-    let dateFilter = {};
-
-    // Set date filter based on timeFrame
+    
+    // Calculate date range based on timeFrame
+    let startDate, endDate;
     const now = new Date();
+    
     switch (timeFrame) {
       case 'daily':
-        dateFilter = {
-          date: {
-            $gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
-            $lt: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
-          }
-        };
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
         break;
       case 'weekly':
         const weekStart = new Date(now);
         weekStart.setDate(now.getDate() - now.getDay());
         weekStart.setHours(0, 0, 0, 0);
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 7);
-        dateFilter = {
-          date: { $gte: weekStart, $lt: weekEnd }
-        };
+        startDate = weekStart;
+        endDate = new Date(weekStart.getDate() + 7);
         break;
       case 'monthly':
-        dateFilter = {
-          date: {
-            $gte: new Date(now.getFullYear(), now.getMonth(), 1),
-            $lt: new Date(now.getFullYear(), now.getMonth() + 1, 1)
-          }
-        };
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
         break;
       case 'yearly':
-        dateFilter = {
-          date: {
-            $gte: new Date(currentYear, 0, 1),
-            $lt: new Date(currentYear + 1, 0, 1)
-          }
-        };
+        startDate = new Date(currentYear, 0, 1);
+        endDate = new Date(currentYear + 1, 0, 1);
         break;
       default:
         return res.status(400).json({ message: 'Invalid timeFrame' });
     }
 
-    // Get reports for the period
-    let reportQuery = { ...dateFilter };
+    // Build query conditions
+    let officeCondition = '';
+    let officeParam = [];
     if (selectedOffice && selectedOffice !== 'all') {
-      reportQuery.officeId = selectedOffice;
+      officeCondition = 'AND r.office_id = $2';
+      officeParam = [selectedOffice];
     }
-    const reports = await Report.find(reportQuery);
 
-    // Get annual plans for current year
-    let planQuery = { year: currentYear };
-    if (selectedOffice && selectedOffice !== 'all') {
-      planQuery.officeId = selectedOffice;
-    }
-    const annualPlans = await require('../models/AnnualPlan').find(planQuery);
+    // Get reports for the period
+    const reportsQuery = await sql`
+      SELECT r.*, o.name_en as office_name 
+      FROM reports r
+      LEFT JOIN offices o ON r.office_id = o.office_id
+      WHERE r.date >= ${startDate.toISOString()} AND r.date < ${endDate.toISOString()}
+      ${selectedOffice && selectedOffice !== 'all' ? sql`AND r.office_id = ${selectedOffice}` : sql``}
+    `;
+
+    // Get annual plans
+    const plansQuery = await sql`
+      SELECT * FROM annual_plans 
+      WHERE year = ${currentYear}
+      ${selectedOffice && selectedOffice !== 'all' ? sql`AND office_id = ${selectedOffice}` : sql``}
+    `;
 
     // Calculate stats
     const officeSet = new Set();
-    let totalReports = reports.length;
+    let totalReports = reportsQuery.length;
     let totalActual = 0;
     let totalTarget = 0;
     let performanceSum = 0;
@@ -106,9 +121,9 @@ router.get('/stats/:timeFrame/:selectedOffice', async (req, res) => {
 
     // Group reports by office and task
     const reportGroups = {};
-    reports.forEach(report => {
-      officeSet.add(report.officeId);
-      const key = `${report.officeId}-${report.taskId}`;
+    reportsQuery.forEach(report => {
+      officeSet.add(report.office_id);
+      const key = `${report.office_id}-${report.task_id}`;
       if (!reportGroups[key]) reportGroups[key] = [];
       reportGroups[key].push(report);
     });
@@ -117,16 +132,15 @@ router.get('/stats/:timeFrame/:selectedOffice', async (req, res) => {
     Object.keys(reportGroups).forEach(key => {
       const [officeId, taskId] = key.split('-');
       const groupReports = reportGroups[key];
-      const actual = groupReports.reduce((sum, r) => sum + r.value, 0);
+      const actual = groupReports.reduce((sum, r) => sum + Number(r.value), 0);
 
       // Find corresponding annual plan
-      const plan = annualPlans.find(p => p.officeId === officeId && p.taskId === taskId);
+      const plan = plansQuery.find(p => p.office_id === officeId && p.task_id === taskId);
       let target = 0;
-      if (plan && plan.distributedPlans) {
-        const distributed = plan.distributedPlans[timeFrame];
+      if (plan && plan.distributed_plans) {
+        const distributed = JSON.parse(plan.distributed_plans)[timeFrame];
         if (distributed) {
-          // Sum all targets for this timeFrame
-          target = Array.from(distributed.values()).reduce((sum, val) => sum + val, 0);
+          target = Object.values(distributed).reduce((sum, val) => sum + val, 0);
         }
       }
 

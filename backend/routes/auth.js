@@ -1,20 +1,35 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const { sql } = require('../db');
 
 const router = express.Router();
 
-// Login
+// Login - Using PostgreSQL
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const user = await User.findOne({ username });
-    if (!user) return res.status(400).json({ message: 'User not found' });
+    const users = await sql`SELECT * FROM users WHERE username = ${username}`;
+    
+    if (users.length === 0) {
+      return res.status(400).json({ message: 'User not found' });
+    }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+    const user = users[0];
+    
+    // For plain text passwords (from frontend data), compare directly
+    // For hashed passwords, use bcrypt.compare
+    let isMatch = false;
+    if (user.password.startsWith('$2')) {
+      isMatch = await bcrypt.compare(password, user.password);
+    } else {
+      isMatch = password === user.password;
+    }
+    
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
 
     const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET || 'secret', { expiresIn: '1h' });
 
@@ -24,26 +39,33 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Register (for admin)
+// Register - Using PostgreSQL
 router.post('/register', async (req, res) => {
   const { name, username, password, role, office, position_am, position_en, accessibleOffices } = req.body;
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({
-      id: Date.now(), // Simple ID generation
-      name,
-      username,
-      password: hashedPassword,
-      role,
-      office,
-      position_am,
-      position_en,
-      accessibleOffices,
-    });
-
-    await user.save();
+    
+    // Get the next ID
+    const maxIdResult = await sql`SELECT COALESCE(MAX(id), 0) + 1 as next_id FROM users`;
+    const nextId = maxIdResult[0].next_id;
+    
+    await sql`
+      INSERT INTO users (id, name, username, password, role, office, position_am, position_en, "accessibleOffices")
+      VALUES (${nextId}, ${name}, ${username}, ${hashedPassword}, ${role}, ${office}, ${position_am}, ${position_en}, ${JSON.stringify(accessibleOffices || [])})
+    `;
+    
     res.status(201).json({ message: 'User created' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get all users - Using PostgreSQL
+router.get('/users', async (req, res) => {
+  try {
+    const users = await sql`SELECT id, name, username, role, office, position_am, position_en FROM users`;
+    res.json(users);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
