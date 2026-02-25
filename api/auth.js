@@ -112,51 +112,110 @@ async function seedInitialUsers() {
     }
 
     // Hash passwords
-    const hashedAdminPassword = await bcrypt.hash('admin123', 10);
-    const hashedUserPassword = await bcrypt.hash('password123', 10);
+    const hashedPassword = await bcrypt.hash('password123', 10);
 
-    // Insert admin user
     await sql`
       INSERT INTO users (name, username, password, role, office, position_am, position_en, "accessibleOffices")
       VALUES (
-        'Admin', 
+        'አስተዳዳሪ', 
         'admin', 
-        ${hashedAdminPassword}, 
+        ${hashedPassword}, 
         'admin', 
-        'Management', 
-        'Administrator',
-        'Manager',
+        'ማኔጅመንት', 
+        'አስተዳዳሪ',
+        'Executive Manager',
         ${JSON.stringify(['all'])}
       )
     `;
 
-    // Insert sub_admin user (tesfaye)
+    // 2. Sub-admin = Party (ፓርቲ) - political office
     await sql`
       INSERT INTO users (name, username, password, role, office, position_am, position_en, "accessibleOffices")
       VALUES (
-        'ተስፋዬ', 
-        'tesfaye', 
-        ${hashedUserPassword}, 
+        'ፓርቲ', 
+        'party', 
+        ${hashedPassword}, 
         'sub_admin', 
-        'የለሚ ኩራ ቢሮ', 
-        'ሰብአዊ ሃብት',
-        'Human Resource',
-        ${JSON.stringify(['office-1', 'office-2', 'office-3'])}
+        'ፓርቲ', 
+        'ፓርቲ ኃላፊ',
+        'Party Leader',
+        ${JSON.stringify(['all'])}
       )
     `;
 
-    // Insert regular user
+    // 3. User/Client = Regular office workers
+    // Finance Office
     await sql`
       INSERT INTO users (name, username, password, role, office, position_am, position_en, "accessibleOffices")
       VALUES (
-        'ወርቅነህ', 
-        'user', 
-        ${hashedUserPassword}, 
+        'ፋይናንስ ባህርይ', 
+        'finance', 
+        ${hashedPassword}, 
         'user', 
         'ፋይናንስ ቢሮ', 
         'ፋይናንስ ባህርይ',
         'Finance Officer',
         ${JSON.stringify(['office-1'])}
+      )
+    `;
+
+    // Human Resource Office
+    await sql`
+      INSERT INTO users (name, username, password, role, office, position_am, position_en, "accessibleOffices")
+      VALUES (
+        'ሰብአዊ ሃብት ባህርይ', 
+        'hr', 
+        ${hashedPassword}, 
+        'user', 
+        'ሰብአዊ ሃብት ቢሮ', 
+        'ሰብአዊ ሃብት ባህርይ',
+        'HR Officer',
+        ${JSON.stringify(['office-2'])}
+      )
+    `;
+
+    // Property Administration Office
+    await sql`
+      INSERT INTO users (name, username, password, role, office, position_am, position_en, "accessibleOffices")
+      VALUES (
+        'ንብረት አስተዳዳሪ', 
+        'property', 
+        ${hashedPassword}, 
+        'user', 
+        'ንብረት አስተዳደር ቢሮ', 
+        'ንብረት አስተዳዳሪ',
+        'Property Administrator',
+        ${JSON.stringify(['office-3'])}
+      )
+    `;
+
+    // Social Affairs Office
+    await sql`
+      INSERT INTO users (name, username, password, role, office, position_am, position_en, "accessibleOffices")
+      VALUES (
+        'ማህበራዊ ጉዳይ ባህርይ', 
+        'social', 
+        ${hashedPassword}, 
+        'user', 
+        'ማህበራዊ ጉዳይ ቢሮ', 
+        'ማህበራዊ ጉዳይ ባህርይ',
+        'Social Affairs Officer',
+        ${JSON.stringify(['office-4'])}
+      )
+    `;
+
+    // Health Office
+    await sql`
+      INSERT INTO users (name, username, password, role, office, position_am, position_en, "accessibleOffices")
+      VALUES (
+        'ጤና ባህርይ', 
+        'health', 
+        ${hashedPassword}, 
+        'user', 
+        'ጤና ቢሮ', 
+        'ጤና ባህርይ',
+        'Health Officer',
+        ${JSON.stringify(['office-5'])}
       )
     `;
 
