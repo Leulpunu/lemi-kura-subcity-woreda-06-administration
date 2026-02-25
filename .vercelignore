@@ -1,6 +1,5 @@
-# Ignore backend and api folders for frontend-only deployment
+# Ignore backend folder for frontend-only deployment
 backend/
-api/
 node_modules/
 *.log
 .env
