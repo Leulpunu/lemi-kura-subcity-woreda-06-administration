@@ -1,20 +1,62 @@
 {
+  "functions": {
+    "api/auth/login.js": {
+      "runtime": "nodejs18.x",
+      "memory": 1024,
+      "maxDuration": 30
+    },
+    "api/auth.js": {
+      "runtime": "nodejs18.x",
+      "memory": 1024,
+      "maxDuration": 30
+    },
+    "api/offices/index.js": {
+      "runtime": "nodejs18.x",
+      "memory": 1024,
+      "maxDuration": 30
+    },
+    "api/reports/index.js": {
+      "runtime": "nodejs18.x",
+      "memory": 1024,
+      "maxDuration": 30
+    },
+    "api/notifications/index.js": {
+      "runtime": "nodejs18.x",
+      "memory": 1024,
+      "maxDuration": 30
+    },
+    "api/annualPlans/index.js": {
+      "runtime": "nodejs18.x",
+      "memory": 1024,
+      "maxDuration": 30
+    },
+    "api/setup.js": {
+      "runtime": "nodejs18.x",
+      "memory": 1024,
+      "maxDuration": 30
+    },
+    "api/test.js": {
+      "runtime": "nodejs18.x",
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
-    { "source": "/api/auth/login", "destination": "/api/auth/login.js"},
-    { "source": "/api/auth/register", "destination": "/api/auth.js"},
-    { "source": "/api/auth/users", "destination": "/api/auth.js"},
-    { "source": "/api/auth/:path*", "destination": "/api/auth.js"},
-    { "source": "/api/offices", "destination": "/api/offices/index.js"},
-    { "source": "/api/offices/:path*", "destination": "/api/offices/index.js"},
-    { "source": "/api/reports", "destination": "/api/reports/index.js"},
-    { "source": "/api/reports/:path*", "destination": "/api/reports/index.js"},
-    { "source": "/api/notifications", "destination": "/api/notifications/index.js"},
-    { "source": "/api/notifications/:path*", "destination": "/api/notifications/index.js"},
-    { "source": "/api/annual-plans", "destination": "/api/annualPlans/index.js"},
-    { "source": "/api/annual-plans/:path*", "destination": "/api/annualPlans/index.js"},
-    { "source": "/api/setup", "destination": "/api/setup.js"},
-    { "source": "/api/test", "destination": "/api/test.js"},
-    { "source": "/api/:path*", "destination": "/api/:path*"},
+    { "source": "/api/auth/login", "destination": "/api/auth/login.js" },
+    { "source": "/api/auth/register", "destination": "/api/auth.js" },
+    { "source": "/api/auth/users", "destination": "/api/auth.js" },
+    { "source": "/api/auth/:path*", "destination": "/api/auth.js" },
+    { "source": "/api/offices", "destination": "/api/offices/index.js" },
+    { "source": "/api/offices/:path*", "destination": "/api/offices/index.js" },
+    { "source": "/api/reports", "destination": "/api/reports/index.js" },
+    { "source": "/api/reports/:path*", "destination": "/api/reports/index.js" },
+    { "source": "/api/notifications", "destination": "/api/notifications/index.js" },
+    { "source": "/api/notifications/:path*", "destination": "/api/notifications/index.js" },
+    { "source": "/api/annual-plans", "destination": "/api/annualPlans/index.js" },
+    { "source": "/api/annual-plans/:path*", "destination": "/api/annualPlans/index.js" },
+    { "source": "/api/setup", "destination": "/api/setup.js" },
+    { "source": "/api/test", "destination": "/api/test.js" },
+    { "source": "/api/:path*", "destination": "/api/:path*" },
     { "source": "/:path*", "destination": "/index.html" }
   ],
   "env": {

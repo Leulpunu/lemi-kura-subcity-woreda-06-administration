@@ -1,21 +1,36 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { neon } = require('@neondatabase/serverless');
 
-// Initialize the database connection
-let sql;
+// Lazy load neon to avoid initialization issues
+let neon;
 try {
-  if (!process.env.DATABASE_URL) {
-    console.error('DATABASE_URL is not defined in environment variables');
-  } else {
-    sql = neon(process.env.DATABASE_URL);
-    console.log('Neon database connection initialized');
-  }
+  neon = require('@neondatabase/serverless');
+  console.log('Neon module loaded successfully');
 } catch (err) {
-  console.error('Failed to initialize Neon database:', err);
+  console.error('Failed to load Neon module:', err);
 }
 
-module.exports = async function handler(req, res) {
+// Lazy initialize the database connection
+let sql = null;
+function getSql() {
+  if (sql) return sql;
+  
+  if (!process.env.DATABASE_URL) {
+    console.error('DATABASE_URL is not defined in environment variables');
+    return null;
+  }
+  
+  try {
+    sql = neon(process.env.DATABASE_URL);
+    console.log('Neon database connection initialized');
+    return sql;
+  } catch (err) {
+    console.error('Failed to initialize Neon database:', err);
+    return null;
+  }
+}
+
+async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -29,23 +44,37 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const { username, password } = req.body;
+  let body = req.body;
+  
+  // Handle if body is a string (Vercel sometimes sends it as string)
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body);
+    } catch (e) {
+      return res.status(400).json({ message: 'Invalid JSON in request body' });
+    }
+  }
+
+  const { username, password } = body || {};
 
   // Validate input
   if (!username || !password) {
     return res.status(400).json({ message: 'Username and password are required' });
   }
 
+  let db;
   try {
-    // Test database connection
-    if (!sql) {
+    // Get database connection
+    db = getSql();
+    if (!db) {
       console.error('Database connection not initialized');
+      console.error('DATABASE_URL present:', !!process.env.DATABASE_URL);
       return res.status(500).json({ message: 'Database connection not initialized. Please check environment variables.' });
     }
 
     // Test the connection first
     try {
-      await sql`SELECT 1`;
+      await db`SELECT 1`;
       console.log('Database connection test successful');
     } catch (dbErr) {
       console.error('Database connection test failed:', dbErr.message);
@@ -53,7 +82,7 @@ module.exports = async function handler(req, res) {
     }
 
     console.log('Attempting login for username:', username);
-    const users = await sql`SELECT * FROM users WHERE username = ${username}`;
+    const users = await db`SELECT * FROM users WHERE username = ${username}`;
     
     if (users.length === 0) {
       console.log('User not found:', username);
@@ -92,4 +121,8 @@ module.exports = async function handler(req, res) {
     console.error('Stack:', err.stack);
     res.status(500).json({ message: 'Server error: ' + err.message });
   }
-};
+}
+
+// Export for Vercel serverless function
+module.exports = handler;
+module.exports.default = handler;
