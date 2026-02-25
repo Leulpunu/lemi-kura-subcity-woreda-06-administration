@@ -101,11 +101,77 @@ async function initializeDatabase() {
 // Initialize on first request
 let dbInitialized = false;
 
+// Seed initial users
+async function seedInitialUsers() {
+  try {
+    // Check if users already exist
+    const existingUsers = await sql`SELECT COUNT(*) as count FROM users`;
+    if (parseInt(existingUsers[0].count) > 0) {
+      console.log('Users already exist, skipping seed');
+      return;
+    }
+
+    // Hash passwords
+    const hashedAdminPassword = await bcrypt.hash('admin123', 10);
+    const hashedUserPassword = await bcrypt.hash('password123', 10);
+
+    // Insert admin user
+    await sql`
+      INSERT INTO users (name, username, password, role, office, position_am, position_en, "accessibleOffices")
+      VALUES (
+        'Admin', 
+        'admin', 
+        ${hashedAdminPassword}, 
+        'admin', 
+        'Management', 
+        'Administrator',
+        'Manager',
+        ${JSON.stringify(['all'])}
+      )
+    `;
+
+    // Insert sub_admin user (tesfaye)
+    await sql`
+      INSERT INTO users (name, username, password, role, office, position_am, position_en, "accessibleOffices")
+      VALUES (
+        'ተስፋዬ', 
+        'tesfaye', 
+        ${hashedUserPassword}, 
+        'sub_admin', 
+        'የለሚ ኩራ ቢሮ', 
+        'ሰብአዊ ሃብት',
+        'Human Resource',
+        ${JSON.stringify(['office-1', 'office-2', 'office-3'])}
+      )
+    `;
+
+    // Insert regular user
+    await sql`
+      INSERT INTO users (name, username, password, role, office, position_am, position_en, "accessibleOffices")
+      VALUES (
+        'ወርቅነህ', 
+        'user', 
+        ${hashedUserPassword}, 
+        'user', 
+        'ፋይናንስ ቢሮ', 
+        'ፋይናንስ ባህርይ',
+        'Finance Officer',
+        ${JSON.stringify(['office-1'])}
+      )
+    `;
+
+    console.log('✅ Initial users seeded');
+  } catch (error) {
+    console.error('❌ Seed error:', error.message);
+  }
+}
+
 // Login
 router.post('/login', async (req, res) => {
   // Initialize database tables on first request
   if (!dbInitialized) {
     await initializeDatabase();
+    await seedInitialUsers();
     dbInitialized = true;
   }
   
