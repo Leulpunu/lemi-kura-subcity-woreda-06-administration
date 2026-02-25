@@ -43,18 +43,18 @@ export const officesData = [
                 id: 'task-4',
                 number_am: 'ተግባር 4',
                 number_en: 'Task 4',
-                title_am: 'ወጣቶችና ሴቶች የቴክኒክ ክህሎት ስልጠና መስጠት',
-                title_en: 'Providing Technical Skills Training to Youth and Women',
+                title_am: 'ወጣቶችና ሴቶች የተኮር የተደራጁ ኢንተርፕራይዞች',
+                title_en: 'Organized Youth and Women in Enterprises',
                 kpis: [
-                    { id: 'kpi-4-1', name_am: 'የተለማመዱ ሰዎች', name_en: 'Trained Individuals' },
-                    { id: 'kpi-4-2', name_am: 'የተሰሩ ስልጠና ፕሮግራሞች', name_en: 'Training Programs Created' }
+                    { id: 'kpi-4-1', name_am: 'የተደራጁ ወጣቶች', name_en: 'Organized Youth' },
+                    { id: 'kpi-4-2', name_am: 'የተደራጁ ሴቶች', name_en: 'Organized Women' }
                 ]
             },
             {
                 id: 'task-5',
                 number_am: 'ተግባር 5',
                 number_en: 'Task 5',
-                title_am: 'ለወጣቶችና ሴቶች የስራ ዕድል መፍጠር በተመለከተ',
+                title_am: 'ለወጣቶችና ሴቶች የስራ ዕድል መፍጠር',
                 title_en: 'Creating Job Opportunities for Youth and Women',
                 kpis: [
                     { id: 'kpi-5-1', name_am: 'የተፈጠሩ ስራ እድሎች', name_en: 'Job Opportunities Created' },
@@ -123,8 +123,8 @@ export const officesData = [
                 title_am: 'ህገወጥ ንግድ ከመከላከል አንጻር የተሰሩ ስራዎች',
                 title_en: 'Works Done in Parallel with Preventing Illegal Trade',
                 kpis: [
-                    { id: 'kpi-trade-2-1', name_am: 'የንግድ ድርጅቶች ቴክኖሎጂ በመጠቀም የንግድ ቁጥጥር', name_en: 'Trade Control Using Technology' },
-                    { id: 'kpi-trade-2-2', name_am: 'መጋዘን ፍተሻ በማድረግ የምርት ክምችትና ሰው ሰራሽ እጥረት መቀነስ', name_en: 'Reducing Product Shortage and Labor Shortage Through Market Research' }
+                    { id: 'kpi-trade-2-1', name_am: 'የንግድ ድርጅቶች በማሽከርከር የተረጋገጡ', name_en: 'Registered Trade Organizations' },
+                    { id: 'kpi-trade-2-2', name_am: 'የታከለ ነጋዴዎች', name_en: 'Licensed Traders' }
                 ]
             }
         ]
@@ -328,7 +328,7 @@ export const officesData = [
     }
 ];
 
-// Users data
+// Users data - matching database seeded users
 export const users = [
     {
         id: 1,
@@ -338,7 +338,8 @@ export const users = [
         role: 'admin',
         office: 'executive',
         position_am: 'አፈፃፀም ሃላፊ',
-        position_en: 'Executive Manager'
+        position_en: 'Executive Manager',
+        accessibleOffices: ['executive', 'work-skills', 'urban-agriculture', 'trade', 'peace-security', 'finance', 'community-governance', 'civil-registration', 'public-service-hr-development', 'party-works']
     },
     {
         id: 2,
@@ -348,7 +349,106 @@ export const users = [
         role: 'user',
         office: 'work-skills',
         position_am: 'ባለሙያ',
-        position_en: 'Expert'
+        position_en: 'Expert',
+        accessibleOffices: ['work-skills']
+    },
+    {
+        id: 3,
+        name: 'ፓርቲ ኃላፊ',
+        username: 'party',
+        password: 'party123',
+        role: 'party',
+        office: 'party-works',
+        position_am: 'ፓርቲ ስራ ኃላፊ',
+        position_en: 'Party Works Head',
+        accessibleOffices: ['party-works']
+    },
+    {
+        id: 4,
+        name: 'ስራና ክህሎት ባለሙያ',
+        username: 'work_skills',
+        password: 'work123',
+        role: 'user',
+        office: 'work-skills',
+        position_am: 'ባለሙያ',
+        position_en: 'Expert',
+        accessibleOffices: ['work-skills']
+    },
+    {
+        id: 5,
+        name: 'ከተማ ግብርና ባለሙያ',
+        username: 'urban_agriculture',
+        password: 'urban123',
+        role: 'user',
+        office: 'urban-agriculture',
+        position_am: 'ባለሙያ',
+        position_en: 'Expert',
+        accessibleOffices: ['urban-agriculture']
+    },
+    {
+        id: 6,
+        name: 'ንግድ ባለሙያ',
+        username: 'trade',
+        password: 'trade123',
+        role: 'user',
+        office: 'trade',
+        position_am: 'ባለሙያ',
+        position_en: 'Expert',
+        accessibleOffices: ['trade']
+    },
+    {
+        id: 7,
+        name: 'ሰላምና ጸጥታ ባለሙያ',
+        username: 'peace_security',
+        password: 'peace123',
+        role: 'user',
+        office: 'peace-security',
+        position_am: 'ባለሙያ',
+        position_en: 'Expert',
+        accessibleOffices: ['peace-security']
+    },
+    {
+        id: 8,
+        name: 'ፋይናንስ ባለሙያ',
+        username: 'finance',
+        password: 'finance123',
+        role: 'user',
+        office: 'finance',
+        position_am: 'ባለሙያ',
+        position_en: 'Expert',
+        accessibleOffices: ['finance']
+    },
+    {
+        id: 9,
+        name: 'ህብረተሰብ ተሳትፎ ባለሙያ',
+        username: 'community',
+        password: 'community123',
+        role: 'user',
+        office: 'community-governance',
+        position_am: 'ባለሙያ',
+        position_en: 'Expert',
+        accessibleOffices: ['community-governance']
+    },
+    {
+        id: 10,
+        name: 'ሲቪል ምዝገባ ባለሙያ',
+        username: 'civil_registration',
+        password: 'civil123',
+        role: 'user',
+        office: 'civil-registration',
+        position_am: 'ባለሙያ',
+        position_en: 'Expert',
+        accessibleOffices: ['civil-registration']
+    },
+    {
+        id: 11,
+        name: 'የፐብሊክ ሰርቪስ ባለሙያ',
+        username: 'public_service',
+        password: 'public123',
+        role: 'user',
+        office: 'public-service-hr-development',
+        position_am: 'ባለሙያ',
+        position_en: 'Expert',
+        accessibleOffices: ['public-service-hr-development']
     }
-    // Add more users...
 ];

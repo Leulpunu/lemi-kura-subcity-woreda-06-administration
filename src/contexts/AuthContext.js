@@ -101,6 +101,45 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Check username availability
+    const checkUsernameAvailability = async (username) => {
+        try {
+            const response = await axios.get(`/api/auth/check-username/${username}`);
+            return response.data.available;
+        } catch (error) {
+            console.error('Check username error:', error);
+            return false;
+        }
+    };
+
+    // Change username function
+    const changeUsername = async (newUsername) => {
+        if (!user) {
+            return { success: false, error: 'No user logged in' };
+        }
+
+        try {
+            const response = await axios.post('/api/auth/change-username', {
+                userId: user.id,
+                newUsername
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            
+            if (response.data.user) {
+                setUser(response.data.user);
+                localStorage.setItem('currentUser', JSON.stringify(response.data.user));
+            }
+            
+            return { success: true, message: response.data.message };
+        } catch (error) {
+            console.error('Change username error:', error.response?.data?.message || error.message);
+            return { success: false, error: error.response?.data?.message || 'Failed to change username' };
+        }
+    };
+
     const value = {
         user,
         isAuthenticated,
@@ -108,7 +147,9 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         createUser,
-        changePassword
+        changePassword,
+        checkUsernameAvailability,
+        changeUsername
     };
 
     return (

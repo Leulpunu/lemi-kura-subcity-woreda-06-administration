@@ -8,13 +8,13 @@ import KPIOverview from '../components/Dashboard/KPIOverview';
 import RecentActivities from '../components/Dashboard/RecentActivities';
 import QuickStats from '../components/Dashboard/QuickStats';
 import Notification from '../components/Notification/Notification';
-import PasswordChange from '../components/Auth/PasswordChange';
+import AccountSettings from '../components/Auth/AccountSettings';
 import '../styles/Dashboard.css';
 
 const Dashboard = ({ language, toggleLanguage }) => {
     const { user, logout } = useAuth();
     const [timeFrame, setTimeFrame] = useState('weekly');
-    const [showPasswordChange, setShowPasswordChange] = useState(false);
+    const [showAccountSettings, setShowAccountSettings] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isNavOpen, setIsNavOpen] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
@@ -93,13 +93,13 @@ const Dashboard = ({ language, toggleLanguage }) => {
                                 <div className="user-menu-actions">
                                     <button
                                         onClick={() => {
-                                            setShowPasswordChange(true);
+                                            setShowAccountSettings(true);
                                             setShowUserMenu(false);
                                         }}
                                         className="user-menu-item"
                                     >
-                                        <i className="fas fa-key"></i>
-                                        {language === 'am' ? 'የይለፍ ቃል ለውጥ' : 'Change Password'}
+                                        <i className="fas fa-cog"></i>
+                                        {language === 'am' ? 'የመለያ ቅንብሮች' : 'Account Settings'}
                                     </button>
                                     <button
                                         onClick={() => {
@@ -279,11 +279,11 @@ const Dashboard = ({ language, toggleLanguage }) => {
                 </div>
             </div>
 
-            {/* Password Change Modal */}
-            {showPasswordChange && (
-                <PasswordChange
+            {/* Account Settings Modal */}
+            {showAccountSettings && (
+                <AccountSettings
                     language={language}
-                    onClose={() => setShowPasswordChange(false)}
+                    onClose={() => setShowAccountSettings(false)}
                 />
             )}
         </div>

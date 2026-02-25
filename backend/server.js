@@ -5,7 +5,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
@@ -25,7 +25,7 @@ async function testConnection() {
   }
 }
 
-// Run connection test
+// Run connection test (don't await - let server start)
 testConnection();
 
 // Routes
@@ -56,6 +56,7 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`API available at http://localhost:${PORT}/api`);
 });
 
 module.exports = app;

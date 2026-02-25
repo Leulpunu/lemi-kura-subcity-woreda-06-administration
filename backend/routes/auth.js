@@ -71,4 +71,39 @@ router.get('/users', async (req, res) => {
   }
 });
 
+// Check username availability
+router.get('/check-username/:username', async (req, res) => {
+  const { username } = req.params;
+  
+  try {
+    const users = await sql`SELECT id FROM users WHERE username = ${username}`;
+    res.json({ available: users.length === 0 });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Change username
+router.post('/change-username', async (req, res) => {
+  const { userId, newUsername } = req.body;
+  
+  try {
+    // Check if username is already taken
+    const existingUsers = await sql`SELECT id FROM users WHERE username = ${newUsername} AND id != ${userId}`;
+    if (existingUsers.length > 0) {
+      return res.status(400).json({ message: 'Username is already taken' });
+    }
+    
+    // Update username
+    await sql`UPDATE users SET username = ${newUsername} WHERE id = ${userId}`;
+    
+    // Get updated user
+    const users = await sql`SELECT id, name, username, role, office, position_am, position_en FROM users WHERE id = ${userId}`;
+    
+    res.json({ message: 'Username changed successfully', user: users[0] });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

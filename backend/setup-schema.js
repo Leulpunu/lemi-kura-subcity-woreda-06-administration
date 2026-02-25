@@ -4,6 +4,15 @@ async function createSchema() {
   try {
     console.log('Creating database schema...');
 
+    // Drop existing tables if they exist
+    console.log('Dropping existing tables...');
+    await sql`DROP TABLE IF EXISTS notifications CASCADE`;
+    await sql`DROP TABLE IF EXISTS annual_plans CASCADE`;
+    await sql`DROP TABLE IF EXISTS reports CASCADE`;
+    await sql`DROP TABLE IF EXISTS offices CASCADE`;
+    await sql`DROP TABLE IF EXISTS users CASCADE`;
+    console.log('✅ Existing tables dropped');
+
     // Create Users Table
     await sql`
       CREATE TABLE IF NOT EXISTS users (
@@ -91,11 +100,9 @@ async function createSchema() {
     `;
     console.log('✅ Notifications table created');
 
-    // Create indexes
-    await sql`CREATE INDEX IF NOT EXISTS idx_reports_office_id ON reports(office_id)`;
+    // Create indexes (skip foreign key indexes for now)
     await sql`CREATE INDEX IF NOT EXISTS idx_reports_date ON reports(date)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_reports_task_id ON reports(task_id)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_annual_plans_office_id ON annual_plans(office_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_annual_plans_year ON annual_plans(year)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_annual_plans_status ON annual_plans(status)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)`;

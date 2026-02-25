@@ -1,23 +1,8 @@
 const { neon } = require('@neondatabase/serverless');
 
-// Initialize the database connection
-let sql;
-try {
-  if (!process.env.DATABASE_URL) {
-    console.error('DATABASE_URL is not defined in environment variables');
-  } else {
-    sql = neon(process.env.DATABASE_URL);
-    console.log('Neon database connection initialized in api/setup.js');
-  }
-} catch (err) {
-  console.error('Failed to initialize Neon database:', err);
-}
+const sql = neon(process.env.DATABASE_URL);
 
 async function createSchema() {
-  if (!sql) {
-    throw new Error('Database connection not initialized');
-  }
-
   // Create Users Table
   await sql`
     CREATE TABLE IF NOT EXISTS users (
@@ -113,10 +98,10 @@ async function createSchema() {
 }
 
 module.exports = async function handler(req, res) {
-  // Set CORS headers
+  // Add CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -127,14 +112,10 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    if (!sql) {
-      return res.status(500).json({ message: 'Database connection not initialized. Please check DATABASE_URL environment variable.' });
-    }
-    
     await createSchema();
     res.status(200).json({ message: 'Database schema created successfully!' });
   } catch (error) {
-    console.error('Setup error:', error.message);
+    console.error('Setup error:', error);
     res.status(500).json({ message: error.message });
   }
 };
