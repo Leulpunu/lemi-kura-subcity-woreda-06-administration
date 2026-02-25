@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 // Create Auth Context
 const AuthContext = createContext();
@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }) => {
             const trimmedPassword = password.trim();
 
             // Call the backend API
-            const response = await axios.post('/api/auth/login', {
+            const response = await api.post('/auth/login', {
                 username: trimmedUsername,
                 password: trimmedPassword
             });
@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }) => {
     // Create user function - uses API
     const createUser = async (userData) => {
         try {
-            const response = await axios.post('/api/auth/register', userData);
+            const response = await api.post('/auth/register', userData);
             return { success: true, data: response.data };
         } catch (error) {
             console.error('Create user error:', error.response?.data?.message || error.message);
@@ -85,7 +85,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            const response = await axios.post('/api/auth/change-password', {
+            const response = await api.post('/auth/change-password', {
                 currentPassword,
                 newPassword,
                 userId: user.id
@@ -104,7 +104,7 @@ export const AuthProvider = ({ children }) => {
     // Check username availability
     const checkUsernameAvailability = async (username) => {
         try {
-            const response = await axios.get(`/api/auth/check-username/${username}`);
+            const response = await api.get(`/auth/check-username/${username}`);
             return response.data.available;
         } catch (error) {
             console.error('Check username error:', error);
@@ -119,7 +119,7 @@ export const AuthProvider = ({ children }) => {
         }
 
         try {
-            const response = await axios.post('/api/auth/change-username', {
+            const response = await api.post('/auth/change-username', {
                 userId: user.id,
                 newUsername
             }, {

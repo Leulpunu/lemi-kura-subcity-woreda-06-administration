@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: lemi-kura-backend
+    env: node
+    region: oregon
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://neondb_owner:npg_Awke48RKBaVi@ep-weathered-rice-aia4pyx5-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require
+      - key: JWT_SECRET
+        value: your-secret-key-here
+      - key: PORT
+        value: 3000
