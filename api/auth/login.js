@@ -2,7 +2,13 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { neon } = require('@neondatabase/serverless');
 
-const sql = neon(process.env.DATABASE_URL);
+const DATABASE_URL = process.env.DATABASE_URL;
+
+if (!DATABASE_URL) {
+  console.error('DATABASE_URL is not set');
+}
+
+const sql = DATABASE_URL ? neon(DATABASE_URL) : null;
 
 module.exports = async function handler(req, res) {
   // Add CORS headers
@@ -17,6 +23,11 @@ module.exports = async function handler(req, res) {
 
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
+  }
+
+  // Check if database is configured
+  if (!sql) {
+    return res.status(500).json({ message: 'Database not configured. Please set DATABASE_URL environment variable.' });
   }
 
   const { username, password } = req.body;
