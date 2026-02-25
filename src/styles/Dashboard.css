@@ -351,12 +351,73 @@
     font-weight: 600;
     transition: all 0.3s ease;
     box-shadow: 0 2px 6px rgba(40, 167, 69, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .language-toggle:hover {
     background: linear-gradient(135deg, #1e7e34 0%, #155724 100%);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+}
+
+.lang-flag {
+    font-size: 1.1rem;
+}
+
+.lang-code {
+    font-size: 0.85rem;
+}
+
+.language-dropdown {
+    position: relative;
+}
+
+.language-menu-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    min-width: 160px;
+    z-index: 1001;
+    border: 1px solid #dee2e6;
+    margin-top: 0.5rem;
+    overflow: hidden;
+}
+
+.language-option {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    color: #495057;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.language-option:hover {
+    background: #f8f9fa;
+}
+
+.language-option.active {
+    background: #e7f5e7;
+    color: #28a745;
+}
+
+.language-option .lang-flag {
+    font-size: 1.2rem;
+}
+
+.language-option .lang-name {
+    font-weight: 500;
 }
 
 .time-select {

@@ -18,8 +18,14 @@ const Dashboard = ({ language, toggleLanguage }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isNavOpen, setIsNavOpen] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
+    const [showLangDropdown, setShowLangDropdown] = useState(false);
     const [lastUpdated, setLastUpdated] = useState(new Date());
     const [selectedOffice, setSelectedOffice] = useState('all');
+
+    const languages = [
+        { code: 'en', name: 'English', flag: '🇺🇸' },
+        { code: 'am', name: 'አማርኛ', flag: '🇪🇹' }
+    ];
 
     const translations = {
         am: {
@@ -68,13 +74,37 @@ const Dashboard = ({ language, toggleLanguage }) => {
                     </div>
                 </div>
                 <div className="header-right">
-                    <button
-                        onClick={toggleLanguage}
-                        className="language-toggle"
-                        title={language === 'am' ? 'Switch to English' : 'አማርኛ ቀይር'}
-                    >
-                        {language === 'am' ? 'EN' : 'አማ'}
-                    </button>
+                    {/* Language Dropdown */}
+                    <div className="language-dropdown">
+                        <button
+                            onClick={() => setShowLangDropdown(!showLangDropdown)}
+                            className="language-toggle"
+                            title={language === 'am' ? 'Switch Language' : 'ቋንቋ ቀይር'}
+                        >
+                            <span className="lang-flag">{language === 'am' ? '🇪🇹' : '🇺🇸'}</span>
+                            <span className="lang-code">{language === 'am' ? 'አማ' : 'EN'}</span>
+                            <i className="fas fa-chevron-down"></i>
+                        </button>
+                        {showLangDropdown && (
+                            <div className="language-menu-dropdown">
+                                {languages.map((lang) => (
+                                    <button
+                                        key={lang.code}
+                                        className={`language-option ${language === lang.code ? 'active' : ''}`}
+                                        onClick={() => {
+                                            if (lang.code !== language) {
+                                                toggleLanguage();
+                                            }
+                                            setShowLangDropdown(false);
+                                        }}
+                                    >
+                                        <span className="lang-flag">{lang.flag}</span>
+                                        <span className="lang-name">{lang.name}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                     <div className="user-profile">
                         <button
                             onClick={() => setShowUserMenu(!showUserMenu)}
