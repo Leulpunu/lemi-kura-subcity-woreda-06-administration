@@ -206,9 +206,36 @@ const Dashboard = ({ language, toggleLanguage }) => {
 
                 {/* Main Dashboard Area */}
                 <div className="main-dashboard">
-                    {/* Quick Stats */}
+{/* Quick Stats */}
                     <div className="dashboard-section">
                         <QuickStats language={language} timeFrame={timeFrame} selectedOffice={selectedOffice} />
+                    </div>
+
+                    {/* Quick Actions - Mobile First */}
+                    <div className="dashboard-section quick-actions-section">
+                        <div className="quick-actions">
+                            <h3>{language === 'am' ? 'ፈጣን እርምጃዎች' : 'Quick Actions'}</h3>
+                            <div className="quick-actions-grid">
+                                {(user.role === 'user' || user.role === 'sub_admin') && (
+                                    <Link to="/report" className="quick-action-btn">
+                                        <i className="fas fa-plus-circle"></i>
+                                        <span>{language === 'am' ? 'አዲስ ሪፖርት' : 'Add Report'}</span>
+                                    </Link>
+                                )}
+                                <Link to="/annual-plan" className="quick-action-btn">
+                                    <i className="fas fa-calendar-plus"></i>
+                                    <span>{language === 'am' ? 'አመታዊ ዕቅድ' : 'Annual Plan'}</span>
+                                </Link>
+                                <button className="quick-action-btn" onClick={() => window.print()}>
+                                    <i className="fas fa-print"></i>
+                                    <span>{language === 'am' ? 'ማተም' : 'Print'}</span>
+                                </button>
+                                <Link to="/reports" className="quick-action-btn">
+                                    <i className="fas fa-file-export"></i>
+                                    <span>{language === 'am' ? 'ሪፖርቶች' : 'Reports'}</span>
+                                </Link>
+                            </div>
+                        </div>
                     </div>
 
                     {/* KPI Overview */}
