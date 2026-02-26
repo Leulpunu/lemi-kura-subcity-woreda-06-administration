@@ -41,7 +41,7 @@ const users = [
     position_en: 'Expert',
     accessibleOffices: ['work-skills']
   },
-  // Party Works - Sub Admin (can merge all office reports and see all plans)
+  // Party Works - Sub Admin (can view all annual plans but only their own office reports)
   {
     name: 'ፓርቲ ኃላፊ',
     username: 'party',
@@ -50,7 +50,7 @@ const users = [
     office: 'party-works',
     position_am: 'ፓርቲ ስራ ኃላፊ',
     position_en: 'Party Works Head / Sub Admin',
-    accessibleOffices: ['party-works', 'work-skills', 'urban-agriculture', 'trade', 'peace-security', 'finance', 'community-governance', 'civil-registration', 'public-service-hr-development', 'executive']
+    accessibleOffices: ['party-works']
   },
   // Work and Skills Office - User
   {

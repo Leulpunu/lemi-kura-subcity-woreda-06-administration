@@ -23,7 +23,7 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
-// Get all reports - Using PostgreSQL (admin and subadmin can see all)
+// Get all reports - Using PostgreSQL (admin can see all, subadmin sees their own office, users see their accessible offices)
 router.get('/', authenticateToken, async (req, res) => {
   try {
     // Get user details
@@ -36,13 +36,23 @@ router.get('/', authenticateToken, async (req, res) => {
     const accessibleOffices = user.accessibleoffices || [];
     
     let reports;
-    if (user.role === 'admin' || user.role === 'subadmin') {
-      // Admin and subadmin can see all reports
+    if (user.role === 'admin') {
+      // Admin can see all reports
       reports = await sql`
         SELECT r.*, u.name as user_name, u.username, o.name_en as office_name
         FROM reports r 
         LEFT JOIN users u ON r.reported_by = u.id
         LEFT JOIN offices o ON r.office_id = o.office_id
+        ORDER BY r.date DESC
+      `;
+    } else if (user.role === 'subadmin') {
+      // Subadmin can only see their own office reports (for reporting to admin)
+      reports = await sql`
+        SELECT r.*, u.name as user_name, u.username, o.name_en as office_name
+        FROM reports r 
+        LEFT JOIN users u ON r.reported_by = u.id
+        LEFT JOIN offices o ON r.office_id = o.office_id
+        WHERE r.office_id = ${user.office}
         ORDER BY r.date DESC
       `;
     } else {
