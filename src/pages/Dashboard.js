@@ -159,6 +159,24 @@ const Dashboard = ({ language, toggleLanguage }) => {
                 </button>
             </div>
 
+            {/* Mobile Navigation Overlay */}
+            {isNavOpen && (
+                <div 
+                    className="nav-overlay" 
+                    onClick={() => setIsNavOpen(false)}
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0,0,0,0.5)',
+                        zIndex: 999,
+                        display: 'block'
+                    }}
+                />
+            )}
+
             <div className="dashboard-layout">
                 {/* Left Navigation */}
                 <div className={`left-nav ${isNavOpen ? 'open' : ''}`}>
