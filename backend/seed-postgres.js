@@ -30,6 +30,17 @@ const users = [
     position_en: 'Executive Manager',
     accessibleOffices: offices.map(o => o.id)
   },
+  // Work and Skills Office - User (mikael)
+  {
+    name: 'ሚካኤል ደስታ',
+    username: 'mikael',
+    password: 'password123',
+    role: 'user',
+    office: 'work-skills',
+    position_am: 'ባለሙያ',
+    position_en: 'Expert',
+    accessibleOffices: ['work-skills']
+  },
   // Party Works - Sub Admin
   {
     name: 'ፓርቲ ኃላፊ',

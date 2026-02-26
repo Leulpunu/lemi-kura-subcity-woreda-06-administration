@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/api/auth/login", "destination": "/api/auth/login" },
     { "source": "/api/(.*)", "destination": "/api/$1" }
   ],
   "buildCommand": "npm run build",
