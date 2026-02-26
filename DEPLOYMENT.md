@@ -13,7 +13,7 @@ npm install
 npm start
 ```
 
-Backend runs at: http://localhost:3000
+Backend runs at: <http://localhost:3000>
 
 2. Start the Frontend
 
@@ -23,7 +23,7 @@ npm install
 npm start
 ```
 
-Frontend runs at: http://localhost:5000
+Frontend runs at: <http://localhost:5000>
 
 ---
 
@@ -51,11 +51,11 @@ Frontend runs at: http://localhost:5000
 
 Click "Advanced" and add these environment variables
 
-| Key | Value |
-|-----|-------|
+| Key          | Value                                                                                                                       |
+|--------------|-----------------------------------------------------------------------------------------------------------------------------|
 | DATABASE_URL | `postgresql://neondb_owner:npg_Awke48RKBaVi@ep-weathered-rice-aia4pyx5-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require` |
-| JWT_SECRET | `your-secret-key-here` |
-| PORT | `3000` |
+| JWT_SECRET   | `your-secret-key-here`                                                                                                     |
+| PORT         | `3000`                                                                                                                      |
 
 ### Step 5: Deploy
 
@@ -80,9 +80,9 @@ Once deployed, you'll get a URL like: `https://lemi-kura-backend.onrender.com`
 
 In Vercel dashboard, go to Settings > Environment Variables and add
 
-| Key | Value |
-|-----|-------|
-| REACT_APP_API_URL | `<your-render-backend-url>` (e.g., https://lemi-kura-backend.onrender.com) |
+| Key               | Value                                                                              |
+|-------------------|------------------------------------------------------------------------------------|
+| REACT_APP_API_URL | `<your-render-backend-url>` (e.g., `https://lemi-kura-backend.onrender.com`)    |
 
 ### Step 3: Deploy
 
