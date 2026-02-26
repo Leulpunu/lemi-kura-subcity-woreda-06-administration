@@ -41,16 +41,16 @@ const users = [
     position_en: 'Expert',
     accessibleOffices: ['work-skills']
   },
-  // Party Works - Sub Admin
+  // Party Works - Sub Admin (can merge all office reports and see all plans)
   {
     name: 'ፓርቲ ኃላፊ',
     username: 'party',
     password: 'party123',
-    role: 'party',
+    role: 'subadmin',
     office: 'party-works',
     position_am: 'ፓርቲ ስራ ኃላፊ',
-    position_en: 'Party Works Head',
-    accessibleOffices: ['party-works']
+    position_en: 'Party Works Head / Sub Admin',
+    accessibleOffices: ['party-works', 'work-skills', 'urban-agriculture', 'trade', 'peace-security', 'finance', 'community-governance', 'civil-registration', 'public-service-hr-development', 'executive']
   },
   // Work and Skills Office - User
   {
@@ -67,7 +67,7 @@ const users = [
   {
     name: 'ከተማ ግብርና ባለሙያ',
     username: 'urban_agriculture',
-    password: 'urban123',
+    password: 'urban_agriculture',
     role: 'user',
     office: 'urban-agriculture',
     position_am: 'ባለሙያ',

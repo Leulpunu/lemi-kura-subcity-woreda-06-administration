@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { sql } = require('../db');
 
-// Middleware to check if user is admin
+// Middleware to check if user is admin or subadmin
 const requireAdmin = async (req, res, next) => {
   try {
     const users = await sql`SELECT * FROM users WHERE id = ${req.userId}`;
-    if (users.length === 0 || users[0].role !== 'admin') {
+    if (users.length === 0 || (users[0].role !== 'admin' && users[0].role !== 'subadmin')) {
       return res.status(403).json({ message: 'Admin access required' });
     }
     next();
@@ -80,8 +80,8 @@ router.get('/:officeId/:taskId/:year', authenticateToken, async (req, res) => {
     const user = users[0];
     const accessibleOffices = user.accessibleoffices || [];
 
-    // Check if user has access to this office
-    if (!accessibleOffices.includes(officeId) && user.role !== 'admin') {
+    // Check if user has access to this office (admin and subadmin can access all)
+    if (!accessibleOffices.includes(officeId) && user.role !== 'admin' && user.role !== 'subadmin') {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -112,11 +112,20 @@ router.get('/', authenticateToken, async (req, res) => {
     const user = users[0];
     const accessibleOffices = user.accessibleoffices || [];
 
-    const plans = await sql`
-      SELECT * FROM annual_plans 
-      WHERE office_id = ANY(${accessibleOffices})
-      ORDER BY year DESC, created_at DESC
-    `;
+    let plans;
+    // Admin and subadmin can see all plans
+    if (user.role === 'admin' || user.role === 'subadmin') {
+      plans = await sql`
+        SELECT * FROM annual_plans 
+        ORDER BY year DESC, created_at DESC
+      `;
+    } else {
+      plans = await sql`
+        SELECT * FROM annual_plans 
+        WHERE office_id = ANY(${accessibleOffices})
+        ORDER BY year DESC, created_at DESC
+      `;
+    }
 
     res.json(plans);
   } catch (error) {

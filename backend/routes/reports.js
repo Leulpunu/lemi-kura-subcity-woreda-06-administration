@@ -1,19 +1,65 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
 const { sql } = require('../db');
 
 const router = express.Router();
 
-// Get all reports - Using PostgreSQL
-router.get('/', async (req, res) => {
+// Middleware to verify JWT token
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ message: 'Access token required' });
+  }
+
   try {
-    const reports = await sql`
-      SELECT r.*, u.name as user_name, u.username 
-      FROM reports r 
-      LEFT JOIN users u ON r.user_id = u.id 
-      ORDER BY r.date DESC
-    `;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    req.userId = decoded.id;
+    req.userRole = decoded.role;
+    next();
+  } catch (error) {
+    return res.status(403).json({ message: 'Invalid token' });
+  }
+};
+
+// Get all reports - Using PostgreSQL (admin and subadmin can see all)
+router.get('/', authenticateToken, async (req, res) => {
+  try {
+    // Get user details
+    const users = await sql`SELECT * FROM users WHERE id = ${req.userId}`;
+    if (users.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    const user = users[0];
+    const accessibleOffices = user.accessibleoffices || [];
+    
+    let reports;
+    if (user.role === 'admin' || user.role === 'subadmin') {
+      // Admin and subadmin can see all reports
+      reports = await sql`
+        SELECT r.*, u.name as user_name, u.username, o.name_en as office_name
+        FROM reports r 
+        LEFT JOIN users u ON r.reported_by = u.id
+        LEFT JOIN offices o ON r.office_id = o.office_id
+        ORDER BY r.date DESC
+      `;
+    } else {
+      // Regular users can only see their accessible offices
+      reports = await sql`
+        SELECT r.*, u.name as user_name, u.username, o.name_en as office_name
+        FROM reports r 
+        LEFT JOIN users u ON r.reported_by = u.id
+        LEFT JOIN offices o ON r.office_id = o.office_id
+        WHERE r.office_id = ANY(${accessibleOffices})
+        ORDER BY r.date DESC
+      `;
+    }
+    
     res.json(reports);
   } catch (err) {
+    console.error('Error fetching reports:', err);
     res.status(500).json({ message: err.message });
   }
 });
