@@ -4,6 +4,7 @@ import {Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, P
 import { Bar, Line, Pie } from 'react-chartjs-2';
 import { officesData } from '../data/offices';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
 import '../styles/AdminPanel.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend);
@@ -16,6 +17,7 @@ const AdminPanel = ({ language, toggleLanguage }) => {
     const [selectedOffice, setSelectedOffice] = useState('all');
     const [timeRange, setTimeRange] = useState('monthly');
     const [showUserForm, setShowUserForm] = useState(false);
+    const [loadingUsers, setLoadingUsers] = useState(true);
     const [newUser, setNewUser] = useState({
         username: '',
         password: '',
@@ -27,14 +29,34 @@ const AdminPanel = ({ language, toggleLanguage }) => {
         accessibleOffices: []
     });
 
+    // Fetch users from backend API
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await api.get('/auth/users', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                setUsers(response.data);
+            } catch (error) {
+                console.error('Error fetching users from API:', error);
+                // Fallback to localStorage if API fails
+                const savedUsers = JSON.parse(localStorage.getItem('users') || '[]');
+                setUsers(savedUsers);
+            } finally {
+                setLoadingUsers(false);
+            }
+        };
+
+        fetchUsers();
+    }, []);
+
     useEffect(() => {
         // Load reports from localStorage or API
         const savedReports = JSON.parse(localStorage.getItem('kpiReports') || '[]');
         setReports(savedReports);
-
-        // Load users
-        const savedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-        setUsers(savedUsers);
 
         // Load annual plans
         const savedPlans = JSON.parse(localStorage.getItem('annualPlans') || '[]');
@@ -249,7 +271,8 @@ const AdminPanel = ({ language, toggleLanguage }) => {
                                 <div className="user-info">
                                     <h4>{user.name || 'Unknown User'}</h4>
                                     <p><strong>{language === 'am' ? 'የተጠቃሚ ስም' : 'Username'}:</strong> {user.username}</p>
-                                    <p><strong>{language === 'am' ? 'የይለፍ ቃል' : 'Password'}:</strong> {user.password}</p>
+                                    <p><strong>{language === 'am' ? 'ሚና' : 'Role'}:</strong> {user.role === 'admin' ? (language === 'am' ? 'አስተያየት ሰጪ' : 'Administrator') : user.role === 'subadmin' ? (language === 'am' ? 'ህዝብ ኃላፊ' : 'Sub Admin') : (language === 'am' ? 'ተጠቃሚ' : 'User')}</p>
+                                    <p><strong>{language === 'am' ? 'ቢሮ' : 'Office'}:</strong> {user.office}</p>
                                     <p>{language === 'am' ? user.position_am : user.position_en}</p>
                                     <p className="user-stats">
                                         {language === 'am' ? 'ሪፖርቶች' : 'Reports'}: {userReports.length}
