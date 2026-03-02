@@ -3,7 +3,7 @@
   background-color: #f5f5f5;
 }
 
-.language-toggle {
+.app-language-toggle {
   position: fixed;
   top: 20px;
   right: 20px;
@@ -21,14 +21,14 @@
   z-index: 1000;
 }
 
-.language-toggle:hover {
+.app-language-toggle:hover {
   background: #764ba2;
   transform: scale(1.1);
 }
 
 /* Mobile responsiveness */
 @media (max-width: 768px) {
-  .language-toggle {
+  .app-language-toggle {
     top: 10px;
     right: 10px;
     width: 40px;

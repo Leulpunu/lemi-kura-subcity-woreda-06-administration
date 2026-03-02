@@ -2,16 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { officesData } from '../data/offices';
-import '../styles/ReportForm.css'; // Use the ReportForm CSS
+import '../styles/ReportForm.css';
 
 const UnifiedReport = ({ language, toggleLanguage }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  
-  // Debug logging
-  console.log('UnifiedReport - User:', user);
-  console.log('UnifiedReport - User Role:', user?.role);
-  console.log('UnifiedReport - Is Admin:', user?.role === 'admin');
+
   const [reportType, setReportType] = useState('daily');
   const [formData, setFormData] = useState({
     date: '',
@@ -23,50 +19,268 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
     task: '',
     kpiData: {}
   });
+  const [existingReport, setExistingReport] = useState(null);
+
+  const t = {
+    am: {
+      title: 'Unified Report Form',
+      reportType: 'Report Type',
+      date: 'Date',
+      startDate: 'Start Date',
+      endDate: 'End Date',
+      month: 'Month',
+      year: 'Year',
+      office: 'Office',
+      task: 'Task',
+      selectOffice: 'Select Office',
+      selectTask: 'Select Task',
+      kpiData: 'KPI Data',
+      lockedNotice: 'This report is locked. Wait for administrator feedback to edit.',
+      unlockedNotice: 'Administrator feedback received. You can edit and resubmit this report.',
+      loginFirst: 'Please login first',
+      lockedAlert: 'This report is locked. You can edit it only after administrator feedback.',
+      alreadyLockedAlert: 'This report was already submitted and is locked.',
+      submit: 'Submit Report',
+      resubmit: 'Resubmit Report'
+    },
+    en: {
+      title: 'Unified Report Form',
+      reportType: 'Report Type',
+      date: 'Date',
+      startDate: 'Start Date',
+      endDate: 'End Date',
+      month: 'Month',
+      year: 'Year',
+      office: 'Office',
+      task: 'Task',
+      selectOffice: 'Select Office',
+      selectTask: 'Select Task',
+      kpiData: 'KPI Data',
+      lockedNotice: 'This report is locked. Wait for administrator feedback to edit.',
+      unlockedNotice: 'Administrator feedback received. You can edit and resubmit this report.',
+      loginFirst: 'Please login first',
+      lockedAlert: 'This report is locked. You can edit it only after administrator feedback.',
+      alreadyLockedAlert: 'This report was already submitted and is locked.',
+      submit: 'Submit Report',
+      resubmit: 'Resubmit Report'
+    }
+  }[language] || {
+    title: 'Unified Report Form',
+    reportType: 'Report Type',
+    date: 'Date',
+    startDate: 'Start Date',
+    endDate: 'End Date',
+    month: 'Month',
+    year: 'Year',
+    office: 'Office',
+    task: 'Task',
+    selectOffice: 'Select Office',
+    selectTask: 'Select Task',
+    kpiData: 'KPI Data',
+    lockedNotice: 'This report is locked. Wait for administrator feedback to edit.',
+    unlockedNotice: 'Administrator feedback received. You can edit and resubmit this report.',
+    loginFirst: 'Please login first',
+    lockedAlert: 'This report is locked. You can edit it only after administrator feedback.',
+    alreadyLockedAlert: 'This report was already submitted and is locked.',
+    submit: 'Submit Report',
+    resubmit: 'Resubmit Report'
+  };
+
+  const getCurrentPeriodKey = (type = reportType, data = formData) => {
+    switch (type) {
+      case 'daily':
+        return data.date || '';
+      case 'weekly':
+        return `${data.startDate || ''}|${data.endDate || ''}`;
+      case 'monthly':
+        return data.month || '';
+      case 'yearly':
+        return data.year ? String(data.year) : '';
+      default:
+        return '';
+    }
+  };
+
+  const getReportPeriodKey = (report) => {
+    switch (report.type) {
+      case 'daily':
+        return report.date ? String(report.date).slice(0, 10) : '';
+      case 'weekly': {
+        const start = report.startDate || report.weekStart || '';
+        const end = report.endDate || '';
+        return `${start}|${end}`;
+      }
+      case 'monthly':
+        return report.month || (report.date ? String(report.date).slice(0, 7) : '');
+      case 'yearly':
+        if (report.year) return String(report.year);
+        if (!report.date) return '';
+        {
+          const parsed = new Date(report.date);
+          return Number.isNaN(parsed.getTime()) ? '' : String(parsed.getFullYear());
+        }
+      default:
+        return '';
+    }
+  };
+
+  const loadExistingReport = (nextFormData = formData, nextReportType = reportType) => {
+    if (!user || !nextFormData.office || !nextFormData.task) {
+      setExistingReport(null);
+      return;
+    }
+
+    const periodKey = getCurrentPeriodKey(nextReportType, nextFormData);
+    if (!periodKey || (nextReportType === 'weekly' && periodKey === '|')) {
+      setExistingReport(null);
+      return;
+    }
+
+    const storedReports = JSON.parse(localStorage.getItem('kpiReports') || '[]');
+    const matchedReports = storedReports
+      .filter((report) => (
+        report.userId === user.id &&
+        report.officeId === nextFormData.office &&
+        report.taskId === nextFormData.task &&
+        report.type === nextReportType &&
+        getReportPeriodKey(report) === periodKey
+      ))
+      .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+
+    const latestMatch = matchedReports[0] || null;
+    setExistingReport(latestMatch);
+
+    if (latestMatch && latestMatch.data) {
+      const nextKpiData = {};
+      Object.entries(latestMatch.data).forEach(([kpiId, value]) => {
+        if (value && typeof value === 'object' && Object.prototype.hasOwnProperty.call(value, 'value')) {
+          nextKpiData[kpiId] = String(value.value ?? '');
+        }
+      });
+      setFormData((prev) => ({ ...prev, kpiData: nextKpiData }));
+      return;
+    }
+
+    setFormData((prev) => ({ ...prev, kpiData: {} }));
+  };
+
+  const hasAdminFeedback = Boolean(existingReport?.feedback && String(existingReport.feedback).trim());
+  const isReportLocked = Boolean(existingReport && !hasAdminFeedback);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
+    const nextFormData = {
+      ...formData,
       [name]: value
-    }));
+    };
+    setFormData(nextFormData);
+    loadExistingReport(nextFormData, reportType);
+  };
+
+  const handleReportTypeChange = (nextType) => {
+    setReportType(nextType);
+    const resetFormData = {
+      date: '',
+      startDate: '',
+      endDate: '',
+      month: '',
+      year: '',
+      office: formData.office,
+      task: formData.task,
+      kpiData: {}
+    };
+    setFormData(resetFormData);
+    setExistingReport(null);
+    if (resetFormData.office && resetFormData.task) {
+      loadExistingReport(resetFormData, nextType);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!user) {
-      alert(language === 'am' ? 'እባክዎ መጀመሪያ ይለገቡ' : 'Please login first');
+      alert(t.loginFirst);
       return;
     }
 
-    const report = {
-      id: Date.now(),
+    if (isReportLocked) {
+      alert(t.lockedAlert);
+      return;
+    }
+
+    const payloadData = Object.keys(formData.kpiData).reduce((acc, kpiId) => {
+      acc[kpiId] = {
+        value: parseFloat(formData.kpiData[kpiId]),
+        [reportType === 'daily' ? 'date' : reportType === 'monthly' ? 'month' : reportType === 'yearly' ? 'year' : 'startDate']:
+          formData[reportType === 'daily' ? 'date' : reportType === 'monthly' ? 'month' : reportType === 'yearly' ? 'year' : 'startDate'],
+        reportedBy: user.id
+      };
+      if (reportType === 'weekly') {
+        acc[kpiId].endDate = formData.endDate;
+      }
+      return acc;
+    }, {});
+
+    const reportBase = {
       officeId: formData.office,
       taskId: formData.task,
       userId: user.id,
       userName: user.name,
-      data: Object.keys(formData.kpiData).reduce((acc, kpiId) => {
-        acc[kpiId] = {
-          value: parseFloat(formData.kpiData[kpiId]),
-          [reportType === 'daily' ? 'date' : reportType === 'monthly' ? 'month' : reportType === 'yearly' ? 'year' : 'startDate']: formData[reportType === 'daily' ? 'date' : reportType === 'monthly' ? 'month' : reportType === 'yearly' ? 'year' : 'startDate'],
-          reportedBy: user.id
-        };
-        if (reportType === 'weekly') {
-          acc[kpiId].endDate = formData.endDate;
-        }
-        return acc;
-      }, {}),
+      data: payloadData,
       timestamp: new Date().toISOString(),
-      type: reportType
+      type: reportType,
+      status: 'submitted',
+      isLocked: true,
+      periodKey: getCurrentPeriodKey()
     };
 
-    // Save to localStorage
-    const existingReports = JSON.parse(localStorage.getItem('kpiReports') || '[]');
-    existingReports.push(report);
-    localStorage.setItem('kpiReports', JSON.stringify(existingReports));
+    if (reportType === 'daily') reportBase.date = formData.date;
+    if (reportType === 'weekly') {
+      reportBase.date = formData.startDate;
+      reportBase.startDate = formData.startDate;
+      reportBase.endDate = formData.endDate;
+      reportBase.weekStart = formData.startDate;
+    }
+    if (reportType === 'monthly') {
+      reportBase.month = formData.month;
+      reportBase.date = `${formData.month}-01`;
+    }
+    if (reportType === 'yearly') {
+      reportBase.year = Number(formData.year);
+      reportBase.date = `${formData.year}-01-01`;
+    }
 
-    alert(language === 'am' ? 'ሪፖርቱ ተሳካ ተላከ' : 'Report submitted successfully');
+    const storedReports = JSON.parse(localStorage.getItem('kpiReports') || '[]');
+    let updatedReports;
+
+    if (existingReport && hasAdminFeedback) {
+      updatedReports = storedReports.map((report) => (
+        report.id === existingReport.id
+          ? {
+              ...report,
+              ...reportBase,
+              feedback: '',
+              feedbackBy: '',
+              feedbackDate: ''
+            }
+          : report
+      ));
+    } else if (existingReport) {
+      alert(t.alreadyLockedAlert);
+      return;
+    } else {
+      updatedReports = [
+        ...storedReports,
+        {
+          id: Date.now(),
+          ...reportBase
+        }
+      ];
+    }
+
+    localStorage.setItem('kpiReports', JSON.stringify(updatedReports));
+    alert('Report submitted successfully');
     navigate('/dashboard');
   };
 
@@ -75,84 +289,35 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
       case 'daily':
         return (
           <div className="form-group">
-            <label htmlFor="date">
-              {language === 'am' ? 'ቀን' : 'Date'}:
-            </label>
-            <input
-              type="date"
-              id="date"
-              name="date"
-              value={formData.date}
-              onChange={handleInputChange}
-              required
-            />
+            <label htmlFor="date">{t.date}:</label>
+            <input type="date" id="date" name="date" value={formData.date} onChange={handleInputChange} required />
           </div>
         );
       case 'weekly':
         return (
           <>
             <div className="form-group">
-              <label htmlFor="startDate">
-                {language === 'am' ? 'የመጀመሪያ ቀን' : 'Start Date'}:
-              </label>
-              <input
-                type="date"
-                id="startDate"
-                name="startDate"
-                value={formData.startDate}
-                onChange={handleInputChange}
-                required
-              />
+              <label htmlFor="startDate">{t.startDate}:</label>
+              <input type="date" id="startDate" name="startDate" value={formData.startDate} onChange={handleInputChange} required />
             </div>
             <div className="form-group">
-              <label htmlFor="endDate">
-                {language === 'am' ? 'የመጨረሻ ቀን' : 'End Date'}:
-              </label>
-              <input
-                type="date"
-                id="endDate"
-                name="endDate"
-                value={formData.endDate}
-                onChange={handleInputChange}
-                required
-              />
+              <label htmlFor="endDate">{t.endDate}:</label>
+              <input type="date" id="endDate" name="endDate" value={formData.endDate} onChange={handleInputChange} required />
             </div>
           </>
         );
       case 'monthly':
         return (
-          <>
-            <div className="form-group">
-              <label htmlFor="month">
-                {language === 'am' ? 'ወር' : 'Month'}:
-              </label>
-              <input
-                type="month"
-                id="month"
-                name="month"
-                value={formData.month}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-          </>
+          <div className="form-group">
+            <label htmlFor="month">{t.month}:</label>
+            <input type="month" id="month" name="month" value={formData.month} onChange={handleInputChange} required />
+          </div>
         );
       case 'yearly':
         return (
           <div className="form-group">
-            <label htmlFor="year">
-              {language === 'am' ? 'አመት' : 'Year'}:
-            </label>
-            <input
-              type="number"
-              id="year"
-              name="year"
-              value={formData.year}
-              onChange={handleInputChange}
-              min="2020"
-              max="2030"
-              required
-            />
+            <label htmlFor="year">{t.year}:</label>
+            <input type="number" id="year" name="year" value={formData.year} onChange={handleInputChange} min="2020" max="2030" required />
           </div>
         );
       default:
@@ -163,57 +328,35 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
   return (
     <div className="daily-report">
       <div className="report-header">
-        <h1>{language === 'am' ? 'አንድ ሪፖርት ቅጽ' : 'Unified Report Form'}</h1>
-        <button
-          onClick={toggleLanguage}
-          className="language-toggle"
-          title={language === 'am' ? 'Switch to English' : 'አማርኛ ቀይር'}
-        >
-          {language === 'am' ? 'EN' : 'አማ'}
+        <h1>{t.title}</h1>
+        <button onClick={toggleLanguage} className="language-toggle" title={language === 'am' ? 'Switch to English' : 'Switch to Amharic'}>
+          {language === 'am' ? 'EN' : 'AM'}
         </button>
       </div>
 
       <form onSubmit={handleSubmit} className="report-form">
         <div className="form-group">
-          <label htmlFor="reportType">
-            {language === 'am' ? 'የሪፖርት አይነት' : 'Report Type'}:
-          </label>
-          <select
-            id="reportType"
-            name="reportType"
-            value={reportType}
-            onChange={(e) => setReportType(e.target.value)}
-          >
-            <option value="daily">{language === 'am' ? 'የቀን ሪፖርት' : 'Daily Report'}</option>
-            <option value="weekly">{language === 'am' ? 'የሳምንት ሪፖርት' : 'Weekly Report'}</option>
-            <option value="monthly">{language === 'am' ? 'የወር ሪፖርት' : 'Monthly Report'}</option>
-            <option value="yearly">{language === 'am' ? 'የአመት ሪፖርት' : 'Yearly Report'}</option>
+          <label htmlFor="reportType">{t.reportType}:</label>
+          <select id="reportType" name="reportType" value={reportType} onChange={(e) => handleReportTypeChange(e.target.value)}>
+            <option value="daily">Daily Report</option>
+            <option value="weekly">Weekly Report</option>
+            <option value="monthly">Monthly Report</option>
+            <option value="yearly">Yearly Report</option>
           </select>
         </div>
 
         {renderDateFields()}
 
         <div className="form-group">
-          <label htmlFor="office">
-            {language === 'am' ? 'ቢሮ' : 'Office'}:
-          </label>
-          <select
-            id="office"
-            name="office"
-            value={formData.office}
-            onChange={handleInputChange}
-            required
-          >
-            <option value="">{language === 'am' ? 'ቢሮ ይምረጡ' : 'Select Office'}</option>
+          <label htmlFor="office">{t.office}:</label>
+          <select id="office" name="office" value={formData.office} onChange={handleInputChange} required>
+            <option value="">{t.selectOffice}</option>
             {officesData
-              .filter(office => {
-                // Admin sees all offices, regular users see only their accessible offices
-                if (user && user.role === 'admin') {
-                  return true;
-                }
+              .filter((office) => {
+                if (user && user.role === 'admin') return true;
                 return user && user.accessibleOffices && user.accessibleOffices.includes(office.id);
               })
-              .map(office => (
+              .map((office) => (
                 <option key={office.id} value={office.id}>
                   {language === 'am' ? office.name_am : office.name_en}
                 </option>
@@ -223,18 +366,10 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
 
         {formData.office && (
           <div className="form-group">
-            <label htmlFor="task">
-              {language === 'am' ? 'ተግባር' : 'Task'}:
-            </label>
-            <select
-              id="task"
-              name="task"
-              value={formData.task || ''}
-              onChange={handleInputChange}
-              required
-            >
-              <option value="">{language === 'am' ? 'ተግባር ይምረጡ' : 'Select Task'}</option>
-              {officesData.find(office => office.id === formData.office)?.tasks.map(task => (
+            <label htmlFor="task">{t.task}:</label>
+            <select id="task" name="task" value={formData.task || ''} onChange={handleInputChange} required>
+              <option value="">{t.selectTask}</option>
+              {officesData.find((office) => office.id === formData.office)?.tasks.map((task) => (
                 <option key={task.id} value={task.id}>
                   {language === 'am' ? task.title_am : task.title_en}
                 </option>
@@ -243,11 +378,15 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
           </div>
         )}
 
-        {/* Add KPI fields here based on selected task */}
         {formData.task && (
           <div className="kpi-section">
-            <h3>{language === 'am' ? 'KPI ውሂብ' : 'KPI Data'}</h3>
-            {officesData.find(office => office.id === formData.office)?.tasks.find(task => task.id === formData.task)?.kpis.map(kpi => (
+            <h3>{t.kpiData}</h3>
+            {existingReport && (
+              <p style={{ marginTop: 0, color: isReportLocked ? '#b45309' : '#166534' }}>
+                {isReportLocked ? t.lockedNotice : t.unlockedNotice}
+              </p>
+            )}
+            {officesData.find((office) => office.id === formData.office)?.tasks.find((task) => task.id === formData.task)?.kpis.map((kpi) => (
               <div key={kpi.id} className="form-group">
                 <label htmlFor={kpi.id}>
                   {language === 'am' ? kpi.name_am : kpi.name_en} ({kpi.unit}):
@@ -259,7 +398,7 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
                   value={formData.kpiData[kpi.id] || ''}
                   onChange={(e) => {
                     const { name, value } = e.target;
-                    setFormData(prev => ({
+                    setFormData((prev) => ({
                       ...prev,
                       kpiData: {
                         ...prev.kpiData,
@@ -269,14 +408,15 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
                   }}
                   min="0"
                   required
+                  disabled={isReportLocked}
                 />
               </div>
             ))}
           </div>
         )}
 
-        <button type="submit" className="submit-btn">
-          {language === 'am' ? 'ሪፖርት አስገባ' : 'Submit Report'}
+        <button type="submit" className="submit-btn" disabled={isReportLocked}>
+          {existingReport && hasAdminFeedback ? t.resubmit : t.submit}
         </button>
       </form>
     </div>

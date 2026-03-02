@@ -25,7 +25,7 @@ function App() {
         {/* Language Toggle Button */}
         <button
           onClick={toggleLanguage}
-          className="language-toggle"
+          className="app-language-toggle"
           title={language === 'am' ? 'Switch to English' : 'አማርኛ ቀይር'}
         >
           {language === 'am' ? 'EN' : 'አማ'}
