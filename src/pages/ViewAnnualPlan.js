@@ -61,7 +61,7 @@ const ViewAnnualPlan = ({ language }) => {
         return (
             <div className="report-form">
                 <div className="report-header">
-                    <button onClick={() => navigate('/')} className="btn-secondary back-button">
+                    <button onClick={() => navigate('/dashboard')} className="btn-secondary back-button">
                         <i className="fas fa-arrow-left"></i> {t.back}
                     </button>
                     <h1>{t.title}</h1>
@@ -74,7 +74,7 @@ const ViewAnnualPlan = ({ language }) => {
     return (
         <div className="report-form">
             <div className="report-header">
-                <button onClick={() => navigate('/')} className="btn-secondary back-button">
+                <button onClick={() => navigate('/dashboard')} className="btn-secondary back-button">
                     <i className="fas fa-arrow-left"></i> {t.back}
                 </button>
                 <h1>{t.title}</h1>

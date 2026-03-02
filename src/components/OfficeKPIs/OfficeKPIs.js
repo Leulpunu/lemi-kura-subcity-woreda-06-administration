@@ -1,5 +1,5 @@
 import React from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { officesData } from '../../data/offices';
 import './OfficeKPIs.css';
@@ -7,6 +7,7 @@ import './OfficeKPIs.css';
 const OfficeKPIs = ({ language }) => {
   const { officeId } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Find the office data
   const office = officesData.find(office => office.id === officeId);
@@ -51,7 +52,7 @@ const OfficeKPIs = ({ language }) => {
         <h1>{office.name_am} - {t.officeKPIs}</h1>
         <button
           className="btn-secondary"
-          onClick={() => window.history.back()}
+          onClick={() => navigate('/dashboard')}
         >
           {t.backToDashboard}
         </button>

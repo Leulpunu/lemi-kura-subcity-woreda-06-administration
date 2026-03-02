@@ -93,7 +93,19 @@ const WeeklyReport = ({ language, toggleLanguage }) => {
 
     return (
         <div className="report-form">
-            <h1>{t.title}</h1>
+            <div className="report-header">
+                <button onClick={() => navigate('/dashboard')} className="btn-secondary back-button">
+                    <i className="fas fa-arrow-left"></i> {language === 'am' ? 'á‹ˆá‹° á‹³áˆ½á‰¦áˆ­á‹µ á‰°áˆ˜áˆˆáˆµ' : 'Back to Dashboard'}
+                </button>
+                <h1>{t.title}</h1>
+                <button
+                    onClick={toggleLanguage}
+                    className="language-toggle"
+                    title={language === 'am' ? 'Switch to English' : 'áŠ áˆ›áˆ­áŠ› á‰€á‹­áˆ­'}
+                >
+                    {language === 'am' ? 'EN' : 'áŠ áˆ›'}
+                </button>
+            </div>
 
             <form onSubmit={handleSubmit}>
                 <div className="form-group">

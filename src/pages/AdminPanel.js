@@ -1,5 +1,6 @@
 // src/pages/AdminPanel.js
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend } from 'chart.js';
 import { Bar, Line, Pie } from 'react-chartjs-2';
 import { officesData } from '../data/offices';
@@ -11,6 +12,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointEleme
 
 const AdminPanel = ({ language, toggleLanguage }) => {
     const { createUser } = useAuth();
+    const navigate = useNavigate();
     const [reports, setReports] = useState([]);
     const [users, setUsers] = useState([]);
     const [plans, setPlans] = useState([]);
@@ -181,6 +183,9 @@ const AdminPanel = ({ language, toggleLanguage }) => {
 
     return (
         <div className="admin-panel">
+            <button onClick={() => navigate('/dashboard')} className="btn-secondary back-button">
+                <i className="fas fa-arrow-left"></i> Back to Dashboard
+            </button>
             <h1>{language === 'am' ? 'አስተዳደር ፓነል' : 'Admin Panel'}</h1>
 
             <div className="admin-filters">

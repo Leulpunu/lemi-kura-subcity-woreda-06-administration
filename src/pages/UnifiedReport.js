@@ -328,6 +328,9 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
   return (
     <div className="daily-report">
       <div className="report-header">
+        <button onClick={() => navigate('/dashboard')} className="btn-secondary back-button">
+          <i className="fas fa-arrow-left"></i> Back to Dashboard
+        </button>
         <h1>{t.title}</h1>
         <button onClick={toggleLanguage} className="language-toggle" title={language === 'am' ? 'Switch to English' : 'Switch to Amharic'}>
           {language === 'am' ? 'EN' : 'AM'}

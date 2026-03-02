@@ -236,7 +236,7 @@ const Reporting = ({ language }) => {
   return (
     <div className="reporting">
       <div className="reporting-header">
-        <button onClick={() => navigate('/')} className="btn-secondary back-button">
+        <button onClick={() => navigate('/dashboard')} className="btn-secondary back-button">
           <i className="fas fa-arrow-left"></i> {t.backToDashboard}
         </button>
         <h2>{t.reports}</h2>
