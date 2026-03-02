@@ -60,7 +60,7 @@ const Dashboard = ({ language, toggleLanguage }) => {
             <div className="dashboard-header">
                 <div className="header-left">
                     <div className="logo">
-                        <h2>የለሚ ኩራ ክ/ከተማ ወረዳ 6 አስተዳደር<br />የመቀነስ ግቦች</h2>
+                        <h2>የለሚ ኩራ ክ/ከተማ ወረዳ 6 አስተዳደር<br />ሪፖርት</h2>
                     </div>
                     <div className="search-bar">
                         <input
