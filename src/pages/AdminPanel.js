@@ -20,6 +20,7 @@ const AdminPanel = ({ language, toggleLanguage }) => {
     const [timeRange, setTimeRange] = useState('monthly');
     const [showUserForm, setShowUserForm] = useState(false);
     const [loadingUsers, setLoadingUsers] = useState(true);
+    const [selectedReport, setSelectedReport] = useState(null);
     const [newUser, setNewUser] = useState({
         username: '',
         password: '',
@@ -97,6 +98,23 @@ const AdminPanel = ({ language, toggleLanguage }) => {
                     return true;
             }
         });
+    };
+
+    const getReportDate = (report) => {
+        if (report?.type === 'monthly' && report.month) return new Date(`${report.month}-01T00:00:00`);
+        if (report?.type === 'yearly' && report.year) return new Date(`${report.year}-01-01T00:00:00`);
+        if (report?.type === 'weekly' && report.startDate) return new Date(`${report.startDate}T00:00:00`);
+        if (report?.date) return new Date(`${String(report.date).slice(0, 10)}T00:00:00`);
+        if (report?.timestamp) return new Date(report.timestamp);
+        return null;
+    };
+
+    const formatReportDate = (report) => {
+        const reportDate = getReportDate(report);
+        if (!reportDate || Number.isNaN(reportDate.getTime())) {
+            return language === 'am' ? 'Unknown Date' : 'Unknown Date';
+        }
+        return reportDate.toLocaleDateString();
     };
 
     // Calculate office performance
@@ -319,12 +337,15 @@ const AdminPanel = ({ language, toggleLanguage }) => {
                                 const office = officesData.find(o => o.id === report.officeId);
                                 return (
                                     <tr key={report.id}>
-                                        <td>{new Date(report.date).toLocaleDateString()}</td>
+                                        <td>{formatReportDate(report)}</td>
                                         <td>{language === 'am' ? office?.name_am : office?.name_en}</td>
                                         <td>{report.userName}</td>
                                         <td>{Object.keys(report.data).length}</td>
                                         <td>
-                                            <button className="btn-view">
+                                            <button
+                                                className="btn-view"
+                                                onClick={() => setSelectedReport(report)}
+                                            >
                                                 {language === 'am' ? 'ይመልከቱ' : 'View'}
                                             </button>
                                         </td>
@@ -335,6 +356,38 @@ const AdminPanel = ({ language, toggleLanguage }) => {
                     </table>
                 </div>
             </div>
+
+            {selectedReport && (
+                <div className="report-modal-overlay" onClick={() => setSelectedReport(null)}>
+                    <div className="report-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="report-modal-header">
+                            <h3>{language === 'am' ? 'Report Details' : 'Report Details'}</h3>
+                            <button className="btn-secondary" onClick={() => setSelectedReport(null)}>
+                                {language === 'am' ? 'Close' : 'Close'}
+                            </button>
+                        </div>
+                        <div className="report-modal-body">
+                            <p><strong>ID:</strong> {selectedReport.id}</p>
+                            <p><strong>{language === 'am' ? 'Date' : 'Date'}:</strong> {formatReportDate(selectedReport)}</p>
+                            <p><strong>{language === 'am' ? 'Type' : 'Type'}:</strong> {selectedReport.type || 'N/A'}</p>
+                            <p><strong>{language === 'am' ? 'Office' : 'Office'}:</strong> {language === 'am'
+                                ? officesData.find((o) => o.id === selectedReport.officeId)?.name_am || selectedReport.officeId
+                                : officesData.find((o) => o.id === selectedReport.officeId)?.name_en || selectedReport.officeId}
+                            </p>
+                            <p><strong>{language === 'am' ? 'User' : 'User'}:</strong> {selectedReport.userName}</p>
+                            <p><strong>{language === 'am' ? 'Task' : 'Task'}:</strong> {selectedReport.taskId}</p>
+                            <h4>{language === 'am' ? 'KPI Values' : 'KPI Values'}</h4>
+                            <ul className="report-kpi-list">
+                                {Object.entries(selectedReport.data || {}).map(([kpiId, kpiData]) => (
+                                    <li key={kpiId}>
+                                        <strong>{kpiId}:</strong> {kpiData?.value ?? 0}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* User Management */}
             <div className="admin-section">

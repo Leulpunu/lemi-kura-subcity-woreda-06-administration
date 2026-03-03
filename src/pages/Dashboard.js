@@ -21,6 +21,12 @@ const Dashboard = ({ language, toggleLanguage }) => {
     const [showLangDropdown, setShowLangDropdown] = useState(false);
     const [lastUpdated, setLastUpdated] = useState(new Date());
     const [selectedOffice, setSelectedOffice] = useState('all');
+    const canCreateReport = ['user', 'sub_admin', 'subadmin', 'party'].includes(user?.role);
+    const hasOfficeAccess = (officeId) => {
+        if (!user) return false;
+        if (user.role === 'admin' || user.role === 'party') return true;
+        return Array.isArray(user.accessibleOffices) && user.accessibleOffices.includes(officeId);
+    };
 
     const languages = [
         { code: 'en', name: 'English', flag: '🇺🇸' },
@@ -177,7 +183,7 @@ const Dashboard = ({ language, toggleLanguage }) => {
                                 <i className="fas fa-tachometer-alt"></i>
                                 {language === 'am' ? 'አጠቃላይ እይታ' : 'Overview'}
                             </Link>
-                            {(user.role === 'user' || user.role === 'sub_admin') && (
+                            {canCreateReport && (
                                 <Link to="/report" className="nav-item" onClick={() => setIsNavOpen(false)}>
                                     <i className="fas fa-plus"></i>
                                     {language === 'am' ? 'አዲስ ሪፖርት' : 'New Report'}
@@ -209,7 +215,7 @@ const Dashboard = ({ language, toggleLanguage }) => {
                                 <span>{language === 'am' ? 'ሁሉንም ቢሮዎች' : 'All Offices'}</span>
                             </div>
                             {officesData
-                                .filter(office => user && user.accessibleOffices && user.accessibleOffices.includes(office.id))
+                                .filter(office => hasOfficeAccess(office.id))
                                 .map(office => (
                                     <div
                                         key={office.id}
@@ -254,7 +260,7 @@ const Dashboard = ({ language, toggleLanguage }) => {
                         <div className="quick-actions">
                             <h3>{language === 'am' ? 'ፈጣን እርምጃዎች' : 'Quick Actions'}</h3>
                             <div className="quick-actions-grid">
-                                {(user.role === 'user' || user.role === 'sub_admin') && (
+                                {canCreateReport && (
                                     <Link to="/report" className="quick-action-btn">
                                         <i className="fas fa-plus-circle"></i>
                                         <span>{language === 'am' ? 'አዲስ ሪፖርት' : 'Add Report'}</span>
@@ -293,7 +299,7 @@ const Dashboard = ({ language, toggleLanguage }) => {
                             >
                                 <option value="all">{language === 'am' ? 'ሁሉንም ቢሮዎች' : 'All Offices'}</option>
                                 {officesData
-                                    .filter(office => user && user.accessibleOffices && user.accessibleOffices.includes(office.id))
+                                    .filter(office => hasOfficeAccess(office.id))
                                     .map(office => (
                                         <option key={office.id} value={office.id}>
                                             {language === 'am' ? office.name_am : office.name_en}
@@ -304,7 +310,7 @@ const Dashboard = ({ language, toggleLanguage }) => {
                         <div className="offices-grid">
                             {officesData
                                 .filter(office => {
-                                    const hasAccess = user && user.accessibleOffices && user.accessibleOffices.includes(office.id);
+                                    const hasAccess = hasOfficeAccess(office.id);
                                     const matchesFilter = selectedOffice === 'all' || office.id === selectedOffice;
                                     return hasAccess && matchesFilter;
                                 })

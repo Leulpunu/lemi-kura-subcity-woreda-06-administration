@@ -7,6 +7,11 @@ import '../styles/ReportForm.css';
 const UnifiedReport = ({ language, toggleLanguage }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const canAccessOffice = (officeId) => {
+    if (!user) return false;
+    if (user.role === 'admin' || user.role === 'party') return true;
+    return Array.isArray(user.accessibleOffices) && user.accessibleOffices.includes(officeId);
+  };
 
   const [reportType, setReportType] = useState('daily');
   const [formData, setFormData] = useState({
@@ -173,6 +178,10 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
       ...formData,
       [name]: value
     };
+    if (name === 'office') {
+      nextFormData.task = '';
+      nextFormData.kpiData = {};
+    }
     setFormData(nextFormData);
     loadExistingReport(nextFormData, reportType);
   };
@@ -355,10 +364,7 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
           <select id="office" name="office" value={formData.office} onChange={handleInputChange} required>
             <option value="">{t.selectOffice}</option>
             {officesData
-              .filter((office) => {
-                if (user && user.role === 'admin') return true;
-                return user && user.accessibleOffices && user.accessibleOffices.includes(office.id);
-              })
+              .filter((office) => canAccessOffice(office.id))
               .map((office) => (
                 <option key={office.id} value={office.id}>
                   {language === 'am' ? office.name_am : office.name_en}
