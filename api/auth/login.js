@@ -58,10 +58,25 @@ module.exports = async function handler(req, res) {
 
     const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET || 'secret', { expiresIn: '1h' });
 
+    // Normalize legacy party role into subadmin for consistent UI/permissions.
+    const normalizedRole = user.role === 'party' ? 'subadmin' : user.role;
+    const normalizedOffice = user.username === 'party' ? 'party-works' : user.office;
+    const normalizedAccessibleOffices = Array.isArray(user.accessibleOffices)
+      ? user.accessibleOffices
+      : [];
+
     // Don't return the password
     const { password: _, ...userWithoutPassword } = user;
+    const normalizedUser = {
+      ...userWithoutPassword,
+      role: normalizedRole,
+      office: normalizedOffice,
+      accessibleOffices: normalizedAccessibleOffices.length > 0
+        ? normalizedAccessibleOffices
+        : (normalizedOffice ? [normalizedOffice] : [])
+    };
     
-    res.status(200).json({ token, user: userWithoutPassword });
+    res.status(200).json({ token, user: normalizedUser });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ message: 'Server error: ' + err.message });

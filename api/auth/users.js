@@ -34,8 +34,26 @@ module.exports = async function handler(req, res) {
       FROM users
       ORDER BY id ASC
     `;
+    
+    const normalizedUsers = users.map((user) => {
+      const isPartyHead = user.username === 'party' || user.role === 'party';
+      const role = isPartyHead ? 'subadmin' : user.role;
+      const office = isPartyHead ? 'party-works' : user.office;
+      const accessibleOffices = Array.isArray(user.accessibleOffices)
+        ? user.accessibleOffices
+        : [];
 
-    return res.status(200).json(users);
+      return {
+        ...user,
+        role,
+        office,
+        accessibleOffices: accessibleOffices.length > 0
+          ? accessibleOffices
+          : (office ? [office] : [])
+      };
+    });
+
+    return res.status(200).json(normalizedUsers);
   } catch (err) {
     console.error('Users fetch error:', err);
     return res.status(500).json({ message: 'Server error: ' + err.message });

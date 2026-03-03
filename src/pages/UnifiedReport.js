@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { officesData } from '../data/offices';
+import api from '../services/api';
 import '../styles/ReportForm.css';
 
 const UnifiedReport = ({ language, toggleLanguage }) => {
@@ -130,6 +131,10 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
   };
 
   const loadExistingReport = (nextFormData = formData, nextReportType = reportType) => {
+    loadExistingReportFromApi(nextFormData, nextReportType);
+  };
+
+  const loadExistingReportFromApi = async (nextFormData = formData, nextReportType = reportType) => {
     if (!user || !nextFormData.office || !nextFormData.task) {
       setExistingReport(null);
       return;
@@ -141,7 +146,19 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
       return;
     }
 
-    const storedReports = JSON.parse(localStorage.getItem('kpiReports') || '[]');
+    let storedReports = [];
+    try {
+      const token = localStorage.getItem('token');
+      const response = await api.get('/reports', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      storedReports = Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      storedReports = JSON.parse(localStorage.getItem('kpiReports') || '[]');
+    }
+
     const matchedReports = storedReports
       .filter((report) => (
         report.userId === user.id &&
@@ -260,35 +277,33 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
       reportBase.date = `${formData.year}-01-01`;
     }
 
-    const storedReports = JSON.parse(localStorage.getItem('kpiReports') || '[]');
-    let updatedReports;
-
-    if (existingReport && hasAdminFeedback) {
-      updatedReports = storedReports.map((report) => (
-        report.id === existingReport.id
-          ? {
-              ...report,
-              ...reportBase,
-              feedback: '',
-              feedbackBy: '',
-              feedbackDate: ''
-            }
-          : report
-      ));
-    } else if (existingReport) {
+    if (existingReport && !hasAdminFeedback) {
       alert(t.alreadyLockedAlert);
       return;
-    } else {
-      updatedReports = [
-        ...storedReports,
-        {
-          id: Date.now(),
-          ...reportBase
-        }
-      ];
     }
 
-    localStorage.setItem('kpiReports', JSON.stringify(updatedReports));
+    try {
+      const token = localStorage.getItem('token');
+      await api.post('/reports', reportBase, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      // Keep local cache for offline fallback.
+      const storedReports = JSON.parse(localStorage.getItem('kpiReports') || '[]');
+      localStorage.setItem('kpiReports', JSON.stringify([
+        ...storedReports,
+        { id: Date.now(), ...reportBase }
+      ]));
+    } catch (error) {
+      const storedReports = JSON.parse(localStorage.getItem('kpiReports') || '[]');
+      localStorage.setItem('kpiReports', JSON.stringify([
+        ...storedReports,
+        { id: Date.now(), ...reportBase }
+      ]));
+    }
+
     alert('Report submitted successfully');
     navigate('/dashboard');
   };

@@ -5,6 +5,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { officesData } from '../../data/offices';
 import { useAuth } from '../../contexts/AuthContext';
+import api from '../../services/api';
 import './Reporting.css';
 
 const Reporting = ({ language }) => {
@@ -18,12 +19,31 @@ const Reporting = ({ language }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedReports = JSON.parse(localStorage.getItem('kpiReports') || '[]');
-    const filteredByAccess = storedReports.filter((report) => {
-      if (user && user.role === 'admin') return true;
-      return user && user.accessibleOffices && user.accessibleOffices.includes(report.officeId);
-    });
-    setReports(filteredByAccess);
+    const loadReports = async () => {
+      if (!user) {
+        setReports([]);
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('token');
+        const response = await api.get('/reports', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        setReports(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        const storedReports = JSON.parse(localStorage.getItem('kpiReports') || '[]');
+        const filteredByAccess = storedReports.filter((report) => {
+          if (user && user.role === 'admin') return true;
+          return user && user.accessibleOffices && user.accessibleOffices.includes(report.officeId);
+        });
+        setReports(filteredByAccess);
+      }
+    };
+
+    loadReports();
   }, [user]);
 
   const translations = {
@@ -184,37 +204,59 @@ const Reporting = ({ language }) => {
   const submitFeedback = () => {
     if (!feedbackModal.feedback.trim()) return;
 
-    const storedReports = JSON.parse(localStorage.getItem('kpiReports') || '[]');
-    const updatedReports = storedReports.map((report) => {
-      if (report.id === feedbackModal.reportId) {
-        return {
-          ...report,
-          feedback: feedbackModal.feedback,
-          feedbackBy: user.name,
-          feedbackDate: new Date().toISOString(),
-          status: 'feedback_provided',
-          isLocked: false
-        };
-      }
-      return report;
-    });
+    const submit = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await api.post('/reports/feedback', {
+          reportId: feedbackModal.reportId,
+          feedback: feedbackModal.feedback
+        }, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
 
-    localStorage.setItem('kpiReports', JSON.stringify(updatedReports));
-    setReports((prevReports) => (
-      prevReports.map((report) => (
-        report.id === feedbackModal.reportId
-          ? {
+        setReports((prevReports) => (
+          prevReports.map((report) => (
+            report.id === feedbackModal.reportId ? response.data : report
+          ))
+        ));
+        closeFeedbackModal();
+      } catch (error) {
+        const storedReports = JSON.parse(localStorage.getItem('kpiReports') || '[]');
+        const updatedReports = storedReports.map((report) => {
+          if (report.id === feedbackModal.reportId) {
+            return {
               ...report,
               feedback: feedbackModal.feedback,
               feedbackBy: user.name,
               feedbackDate: new Date().toISOString(),
               status: 'feedback_provided',
               isLocked: false
-            }
-          : report
-      ))
-    ));
-    closeFeedbackModal();
+            };
+          }
+          return report;
+        });
+        localStorage.setItem('kpiReports', JSON.stringify(updatedReports));
+        setReports((prevReports) => (
+          prevReports.map((report) => (
+            report.id === feedbackModal.reportId
+              ? {
+                  ...report,
+                  feedback: feedbackModal.feedback,
+                  feedbackBy: user.name,
+                  feedbackDate: new Date().toISOString(),
+                  status: 'feedback_provided',
+                  isLocked: false
+                }
+              : report
+          ))
+        ));
+        closeFeedbackModal();
+      }
+    };
+
+    submit();
   };
 
   const toggleReportExpansion = (reportId) => {

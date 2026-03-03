@@ -57,13 +57,26 @@ const AdminPanel = ({ language, toggleLanguage }) => {
     }, []);
 
     useEffect(() => {
-        // Load reports from localStorage or API
-        const savedReports = JSON.parse(localStorage.getItem('kpiReports') || '[]');
-        setReports(savedReports);
+        const fetchReportsAndPlans = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const reportsResponse = await api.get('/reports', {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+                setReports(Array.isArray(reportsResponse.data) ? reportsResponse.data : []);
+            } catch (error) {
+                const savedReports = JSON.parse(localStorage.getItem('kpiReports') || '[]');
+                setReports(savedReports);
+            }
 
-        // Load annual plans
-        const savedPlans = JSON.parse(localStorage.getItem('annualPlans') || '[]');
-        setPlans(savedPlans);
+            // Load annual plans
+            const savedPlans = JSON.parse(localStorage.getItem('annualPlans') || '[]');
+            setPlans(savedPlans);
+        };
+
+        fetchReportsAndPlans();
     }, []);
 
     // Get target from saved plans
@@ -84,7 +97,8 @@ const AdminPanel = ({ language, toggleLanguage }) => {
         const startOfYear = new Date(now.getFullYear(), 0, 1);
 
         return reports.filter(report => {
-            const reportDate = new Date(report.date);
+            const reportDate = getReportDate(report);
+            if (!reportDate || Number.isNaN(reportDate.getTime())) return false;
             switch (timeRange) {
                 case 'daily':
                     return reportDate >= startOfDay;
@@ -294,7 +308,7 @@ const AdminPanel = ({ language, toggleLanguage }) => {
                                 <div className="user-info">
                                     <h4>{user.name || 'Unknown User'}</h4>
                                     <p><strong>{language === 'am' ? 'የተጠቃሚ ስም' : 'Username'}:</strong> {user.username}</p>
-                                    <p><strong>{language === 'am' ? 'ሚና' : 'Role'}:</strong> {user.role === 'admin' ? (language === 'am' ? 'አስተያየት ሰጪ' : 'Administrator') : user.role === 'subadmin' ? (language === 'am' ? 'ህዝብ ኃላፊ' : 'Sub Admin') : (language === 'am' ? 'ተጠቃሚ' : 'User')}</p>
+                                    <p><strong>{language === 'am' ? 'ሚና' : 'Role'}:</strong> {user.role === 'admin' ? (language === 'am' ? 'አስተያየት ሰጪ' : 'Administrator') : (user.role === 'subadmin' || user.role === 'sub_admin' || user.role === 'party') ? (language === 'am' ? 'ህዝብ ኃላፊ' : 'Sub Admin') : (language === 'am' ? 'ተጠቃሚ' : 'User')}</p>
                                     <p><strong>{language === 'am' ? 'ቢሮ' : 'Office'}:</strong> {user.office}</p>
                                     <p>{language === 'am' ? user.position_am : user.position_en}</p>
                                     <p className="user-stats">
@@ -529,3 +543,4 @@ const AdminPanel = ({ language, toggleLanguage }) => {
 };
 
 export default AdminPanel;
+
