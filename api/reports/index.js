@@ -26,6 +26,11 @@ const mapReport = (row) => ({
   timestamp: row.created_at,
 });
 
+const normalizeRole = (role) => {
+  if (role === 'sub_admin' || role === 'party') return 'subadmin';
+  return role;
+};
+
 const ensureTable = async () => {
   await sql`
     CREATE TABLE IF NOT EXISTS kpi_reports (
@@ -88,31 +93,40 @@ module.exports = async function handler(req, res) {
 
     if (req.method === 'GET') {
       let rows = [];
-      const role = authUser.role;
+      const role = normalizeRole(authUser.role);
       const accessible = Array.isArray(authUser.accessibleOffices) ? authUser.accessibleOffices : [];
 
       if (role === 'admin') {
         rows = await sql`SELECT * FROM kpi_reports ORDER BY created_at DESC`;
-      } else if (accessible.length > 0) {
+      } else if (role === 'subadmin' && accessible.length > 0) {
         rows = await sql`
           SELECT * FROM kpi_reports
           WHERE office_id = ANY(${accessible})
           ORDER BY created_at DESC
         `;
-      } else if (authUser.office) {
+      } else if (role === 'subadmin' && authUser.office) {
         rows = await sql`
           SELECT * FROM kpi_reports
           WHERE office_id = ${authUser.office}
           ORDER BY created_at DESC
         `;
       } else {
-        rows = [];
+        // Regular users only see their own submitted reports.
+        rows = await sql`
+          SELECT * FROM kpi_reports
+          WHERE user_id = ${authUser.id}
+          ORDER BY created_at DESC
+        `;
       }
 
       return res.status(200).json(rows.map(mapReport));
     }
 
     if (req.method === 'POST') {
+      const role = normalizeRole(authUser.role);
+      const accessible = Array.isArray(authUser.accessibleOffices) ? authUser.accessibleOffices : [];
+      const allowedOffices = accessible.length > 0 ? accessible : (authUser.office ? [authUser.office] : []);
+
       const {
         officeId,
         taskId,
@@ -128,6 +142,11 @@ module.exports = async function handler(req, res) {
 
       if (!officeId || !taskId || !type || !data || typeof data !== 'object') {
         return res.status(400).json({ message: 'Missing required report fields' });
+      }
+
+      // Enforce office-level reporting access for all non-admin roles.
+      if (role !== 'admin' && !allowedOffices.includes(officeId)) {
+        return res.status(403).json({ message: 'You do not have permission to submit reports for this office' });
       }
 
       const inserted = await sql`

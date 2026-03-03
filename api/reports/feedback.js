@@ -26,6 +26,11 @@ const mapReport = (row) => ({
   timestamp: row.created_at,
 });
 
+const normalizeRole = (role) => {
+  if (role === 'sub_admin' || role === 'party') return 'subadmin';
+  return role;
+};
+
 const getAuthUser = async (req) => {
   const authHeader = req.headers.authorization || req.headers.Authorization;
   const token = authHeader && String(authHeader).startsWith('Bearer ')
@@ -60,8 +65,11 @@ module.exports = async function handler(req, res) {
     if (!authUser) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-    if (authUser.role !== 'admin') {
-      return res.status(403).json({ message: 'Only admin can provide feedback' });
+    const role = normalizeRole(authUser.role);
+    const accessible = Array.isArray(authUser.accessibleOffices) ? authUser.accessibleOffices : [];
+    const allowedOffices = accessible.length > 0 ? accessible : (authUser.office ? [authUser.office] : []);
+    if (role !== 'admin' && role !== 'subadmin') {
+      return res.status(403).json({ message: 'Only admin or subadmin can provide feedback' });
     }
 
     const { reportId, feedback } = req.body || {};
@@ -69,18 +77,34 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ message: 'reportId and feedback are required' });
     }
 
-    const updated = await sql`
-      UPDATE kpi_reports
-      SET
-        feedback = ${String(feedback).trim()},
-        feedback_by = ${authUser.name},
-        feedback_date = NOW(),
-        status = 'feedback_provided',
-        is_locked = FALSE,
-        updated_at = NOW()
-      WHERE id = ${reportId}
-      RETURNING *
-    `;
+    let updated = [];
+    if (role === 'admin') {
+      updated = await sql`
+        UPDATE kpi_reports
+        SET
+          feedback = ${String(feedback).trim()},
+          feedback_by = ${authUser.name},
+          feedback_date = NOW(),
+          status = 'feedback_provided',
+          is_locked = FALSE,
+          updated_at = NOW()
+        WHERE id = ${reportId}
+        RETURNING *
+      `;
+    } else {
+      updated = await sql`
+        UPDATE kpi_reports
+        SET
+          feedback = ${String(feedback).trim()},
+          feedback_by = ${authUser.name},
+          feedback_date = NOW(),
+          status = 'feedback_provided',
+          is_locked = FALSE,
+          updated_at = NOW()
+        WHERE id = ${reportId} AND office_id = ANY(${allowedOffices})
+        RETURNING *
+      `;
+    }
 
     if (!updated.length) {
       return res.status(404).json({ message: 'Report not found' });

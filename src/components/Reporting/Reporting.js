@@ -17,6 +17,7 @@ const Reporting = ({ language }) => {
   const [toDate, setToDate] = useState('');
   const { user } = useAuth();
   const navigate = useNavigate();
+  const canGiveFeedback = user && ['admin', 'subadmin', 'sub_admin', 'party'].includes(user.role);
 
   useEffect(() => {
     const loadReports = async () => {
@@ -285,7 +286,7 @@ const Reporting = ({ language }) => {
       </div>
 
       <div className="export-buttons">
-        {user && user.role === 'admin' && (
+        {canGiveFeedback && (
           <>
             <select
               value={reportTypeFilter}
@@ -340,7 +341,7 @@ const Reporting = ({ language }) => {
                 <th>{t.task}</th>
                 <th>{t.kpi}</th>
                 <th>{t.value}</th>
-                {user && user.role === 'admin' && <th>{t.feedback}</th>}
+                {canGiveFeedback && <th>{t.feedback}</th>}
               </tr>
             </thead>
             <tbody>
@@ -390,7 +391,7 @@ const Reporting = ({ language }) => {
                     <td onClick={() => downloadReport(report)} style={{ cursor: 'pointer' }}>
                       {Object.values(report.data || {}).map((d) => d.value || 0).join(', ')}
                     </td>
-                    {user && user.role === 'admin' && (
+                    {canGiveFeedback && (
                       <td onClick={(e) => e.stopPropagation()}>
                         {report.feedback ? (
                           <div className="feedback-display">
@@ -413,7 +414,7 @@ const Reporting = ({ language }) => {
                   </tr>
                   {expandedReports.has(report.id) && (
                     <tr>
-                      <td colSpan={user && user.role === 'admin' ? 8 : 7}>
+                      <td colSpan={canGiveFeedback ? 8 : 7}>
                         <div className="report-details">
                           <div className="detail-row">
                             <span className="detail-label">Report ID:</span>

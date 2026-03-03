@@ -18,6 +18,9 @@ const AdminPanel = ({ language, toggleLanguage }) => {
     const [plans, setPlans] = useState([]);
     const [selectedOffice, setSelectedOffice] = useState('all');
     const [timeRange, setTimeRange] = useState('monthly');
+    const [planOfficeFilter, setPlanOfficeFilter] = useState('all');
+    const [planStatusFilter, setPlanStatusFilter] = useState('all');
+    const [planYearFilter, setPlanYearFilter] = useState('');
     const [showUserForm, setShowUserForm] = useState(false);
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [selectedReport, setSelectedReport] = useState(null);
@@ -71,9 +74,18 @@ const AdminPanel = ({ language, toggleLanguage }) => {
                 setReports(savedReports);
             }
 
-            // Load annual plans
-            const savedPlans = JSON.parse(localStorage.getItem('annualPlans') || '[]');
-            setPlans(savedPlans);
+            try {
+                const token = localStorage.getItem('token');
+                const plansResponse = await api.get('/annualPlans', {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+                setPlans(Array.isArray(plansResponse.data) ? plansResponse.data : []);
+            } catch (error) {
+                const savedPlans = JSON.parse(localStorage.getItem('annualPlans') || '[]');
+                setPlans(savedPlans);
+            }
         };
 
         fetchReportsAndPlans();
@@ -86,6 +98,40 @@ const AdminPanel = ({ language, toggleLanguage }) => {
             return plan.annualTargets[kpiId];
         }
         return 1; // Default target if no plan found
+    };
+
+    const filteredPlans = plans.filter((plan) => {
+        const matchesOffice = planOfficeFilter === 'all' || plan.officeId === planOfficeFilter;
+        const matchesStatus = planStatusFilter === 'all' || (plan.status || 'submitted') === planStatusFilter;
+        const matchesYear = !planYearFilter || String(plan.year) === String(planYearFilter);
+        return matchesOffice && matchesStatus && matchesYear;
+    });
+
+    const pendingPlans = filteredPlans.filter((plan) => (plan.status || 'submitted') === 'submitted');
+    const reviewedPlans = filteredPlans
+        .filter((plan) => ['approved', 'rejected'].includes(plan.status))
+        .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
+
+    const handlePlanDecision = async (planId, action) => {
+        try {
+            const token = localStorage.getItem('token');
+            const payload = { id: planId, action };
+            if (action === 'reject') {
+                const reason = window.prompt(language === 'am' ? 'የመመለሻ ምክንያት ያስገቡ' : 'Enter rejection reason');
+                if (!reason || !reason.trim()) return;
+                payload.rejectionReason = reason.trim();
+            }
+
+            const response = await api.patch('/annualPlans', payload, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            setPlans((prev) => prev.map((plan) => (
+                plan.id === planId ? response.data : plan
+            )));
+        } catch (error) {
+            alert(error?.response?.data?.message || (language === 'am' ? 'ውሳኔ መውሰድ አልተሳካም' : 'Failed to process annual plan decision'));
+        }
     };
 
     // Filter reports based on time range
@@ -255,32 +301,109 @@ const AdminPanel = ({ language, toggleLanguage }) => {
                 </div>
             </div>
 
-            {/* Annual Plans Overview */}
+                                    {/* Annual Plans Dashboard */}
             <div className="admin-section">
-                <h2>{language === 'am' ? 'የአመት እቅዶች' : 'Annual Plans'}</h2>
-                {plans.length === 0 ? (
-                    <p>{language === 'am' ? 'ምንም እቅድ የለም' : 'No annual plans found'}</p>
+                <h2>Annual Plans Dashboard</h2>
+
+                <div className="admin-filters" style={{ justifyContent: 'flex-start', marginBottom: '16px' }}>
+                    <select value={planOfficeFilter} onChange={(e) => setPlanOfficeFilter(e.target.value)}>
+                        <option value="all">All Offices</option>
+                        {officesData.map((office) => (
+                            <option key={office.id} value={office.id}>
+                                {language === 'am' ? office.name_am : office.name_en}
+                            </option>
+                        ))}
+                    </select>
+                    <select value={planStatusFilter} onChange={(e) => setPlanStatusFilter(e.target.value)}>
+                        <option value="all">All Status</option>
+                        <option value="submitted">Submitted</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                    <input
+                        type="number"
+                        min="2020"
+                        max="2100"
+                        placeholder="Year"
+                        value={planYearFilter}
+                        onChange={(e) => setPlanYearFilter(e.target.value)}
+                        style={{ width: '120px' }}
+                    />
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                    <span className="plan-pill">Pending: {pendingPlans.length}</span>
+                    <span className="plan-pill">Reviewed: {reviewedPlans.length}</span>
+                    <span className="plan-pill">Total: {filteredPlans.length}</span>
+                </div>
+
+                <h3 style={{ marginBottom: '10px' }}>Pending Plans</h3>
+                {pendingPlans.length === 0 ? (
+                    <p>No pending annual plans.</p>
                 ) : (
-                    <div className="reports-table">
+                    <div className="reports-table" style={{ marginBottom: '20px' }}>
                         <table>
                             <thead>
                                 <tr>
-                                    <th>{language === 'am' ? 'አመት' : 'Year'}</th>
-                                    <th>{language === 'am' ? 'ቢሮ' : 'Office'}</th>
-                                    <th>{language === 'am' ? 'ተግባር' : 'Task'}</th>
-                                    <th>{language === 'am' ? 'ኪፒአይዎች' : 'KPIs'}</th>
+                                    <th>Year</th>
+                                    <th>Office</th>
+                                    <th>Task</th>
+                                    <th>KPIs</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {plans.slice(0, 10).map(plan => {
-                                    const office = officesData.find(o => o.id === plan.officeId);
-                                    const task = office?.tasks.find(t => t.id === plan.taskId);
+                                {pendingPlans.map((plan) => {
+                                    const office = officesData.find((o) => o.id === plan.officeId);
+                                    const task = office?.tasks.find((t) => t.id === plan.taskId);
                                     return (
                                         <tr key={plan.id}>
                                             <td>{plan.year}</td>
                                             <td>{language === 'am' ? office?.name_am : office?.name_en}</td>
                                             <td>{language === 'am' ? task?.title_am : task?.title_en}</td>
                                             <td>{Object.keys(plan.annualTargets || {}).length}</td>
+                                            <td>{plan.status || 'submitted'}</td>
+                                            <td>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button className="btn-view" onClick={() => handlePlanDecision(plan.id, 'approve')}>Approve</button>
+                                                    <button className="btn-secondary" onClick={() => handlePlanDecision(plan.id, 'reject')}>Request Changes</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+                <h3 style={{ marginBottom: '10px' }}>Plan History</h3>
+                {reviewedPlans.length === 0 ? (
+                    <p>No reviewed plans found.</p>
+                ) : (
+                    <div className="reports-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Year</th>
+                                    <th>Office</th>
+                                    <th>Task</th>
+                                    <th>Status</th>
+                                    <th>Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {reviewedPlans.slice(0, 30).map((plan) => {
+                                    const office = officesData.find((o) => o.id === plan.officeId);
+                                    const task = office?.tasks.find((t) => t.id === plan.taskId);
+                                    return (
+                                        <tr key={plan.id}>
+                                            <td>{plan.year}</td>
+                                            <td>{language === 'am' ? office?.name_am : office?.name_en}</td>
+                                            <td>{language === 'am' ? task?.title_am : task?.title_en}</td>
+                                            <td>{plan.status}</td>
+                                            <td>{plan.status === 'rejected' ? (plan.rejectionReason || '-') : '-'}</td>
                                         </tr>
                                     );
                                 })}
@@ -543,4 +666,5 @@ const AdminPanel = ({ language, toggleLanguage }) => {
 };
 
 export default AdminPanel;
+
 

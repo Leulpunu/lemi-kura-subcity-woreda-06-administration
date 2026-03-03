@@ -29,25 +29,31 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
 
   const t = {
     am: {
-      title: 'Unified Report Form',
-      reportType: 'Report Type',
-      date: 'Date',
-      startDate: 'Start Date',
-      endDate: 'End Date',
-      month: 'Month',
-      year: 'Year',
-      office: 'Office',
-      task: 'Task',
-      selectOffice: 'Select Office',
-      selectTask: 'Select Task',
-      kpiData: 'KPI Data',
-      lockedNotice: 'This report is locked. Wait for administrator feedback to edit.',
-      unlockedNotice: 'Administrator feedback received. You can edit and resubmit this report.',
-      loginFirst: 'Please login first',
-      lockedAlert: 'This report is locked. You can edit it only after administrator feedback.',
-      alreadyLockedAlert: 'This report was already submitted and is locked.',
-      submit: 'Submit Report',
-      resubmit: 'Resubmit Report'
+      title: 'የተቀናጀ ሪፖርት ቅጽ',
+      reportType: 'የሪፖርት አይነት',
+      date: 'ቀን',
+      startDate: 'የመጀመሪያ ቀን',
+      endDate: 'የመጨረሻ ቀን',
+      month: 'ወር',
+      year: 'ዓመት',
+      office: 'ቢሮ',
+      task: 'ተግባር',
+      selectOffice: 'ቢሮ ይምረጡ',
+      selectTask: 'ተግባር ይምረጡ',
+      kpiData: 'የKPI መረጃ',
+      lockedNotice: 'ይህ ሪፖርት ተቆልፏል። ለማስተካከል የአስተዳዳሪ አስተያየት ይጠብቁ።',
+      unlockedNotice: 'የአስተዳዳሪ አስተያየት ደርሷል። ሪፖርቱን ማስተካከል እና እንደገና መላክ ይችላሉ።',
+      loginFirst: 'እባክዎ መጀመሪያ ይግቡ',
+      lockedAlert: 'ይህ ሪፖርት ተቆልፏል። ከአስተዳዳሪ አስተያየት በኋላ ብቻ ማስተካከል ይቻላል።',
+      alreadyLockedAlert: 'ይህ ሪፖርት ቀድሞ ተልኳል እና ተቆልፏል።',
+      submit: 'ሪፖርት አስገባ',
+      resubmit: 'እንደገና አስገባ',
+      back: 'ወደ ዳሽቦርድ ተመለስ',
+      daily: 'ዕለታዊ ሪፖርት',
+      weekly: 'ሳምንታዊ ሪፖርት',
+      monthly: 'ወራዊ ሪፖርት',
+      yearly: 'ዓመታዊ ሪፖርት',
+      submitSuccess: 'ሪፖርቱ በተሳካ ሁኔታ ተልኳል'
     },
     en: {
       title: 'Unified Report Form',
@@ -68,7 +74,13 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
       lockedAlert: 'This report is locked. You can edit it only after administrator feedback.',
       alreadyLockedAlert: 'This report was already submitted and is locked.',
       submit: 'Submit Report',
-      resubmit: 'Resubmit Report'
+      resubmit: 'Resubmit Report',
+      back: 'Back to Dashboard',
+      daily: 'Daily Report',
+      weekly: 'Weekly Report',
+      monthly: 'Monthly Report',
+      yearly: 'Yearly Report',
+      submitSuccess: 'Report submitted successfully'
     }
   }[language] || {
     title: 'Unified Report Form',
@@ -89,7 +101,13 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
     lockedAlert: 'This report is locked. You can edit it only after administrator feedback.',
     alreadyLockedAlert: 'This report was already submitted and is locked.',
     submit: 'Submit Report',
-    resubmit: 'Resubmit Report'
+    resubmit: 'Resubmit Report',
+    back: 'Back to Dashboard',
+    daily: 'Daily Report',
+    weekly: 'Weekly Report',
+    monthly: 'Monthly Report',
+    yearly: 'Yearly Report',
+    submitSuccess: 'Report submitted successfully'
   };
 
   const getCurrentPeriodKey = (type = reportType, data = formData) => {
@@ -304,7 +322,7 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
       ]));
     }
 
-    alert('Report submitted successfully');
+    alert(t.submitSuccess);
     navigate('/dashboard');
   };
 
@@ -353,7 +371,7 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
     <div className="daily-report">
       <div className="report-header">
         <button onClick={() => navigate('/dashboard')} className="btn-secondary back-button">
-          <i className="fas fa-arrow-left"></i> Back to Dashboard
+          <i className="fas fa-arrow-left"></i> {t.back}
         </button>
         <h1>{t.title}</h1>
         <button onClick={toggleLanguage} className="language-toggle" title={language === 'am' ? 'Switch to English' : 'Switch to Amharic'}>
@@ -365,10 +383,10 @@ const UnifiedReport = ({ language, toggleLanguage }) => {
         <div className="form-group">
           <label htmlFor="reportType">{t.reportType}:</label>
           <select id="reportType" name="reportType" value={reportType} onChange={(e) => handleReportTypeChange(e.target.value)}>
-            <option value="daily">Daily Report</option>
-            <option value="weekly">Weekly Report</option>
-            <option value="monthly">Monthly Report</option>
-            <option value="yearly">Yearly Report</option>
+            <option value="daily">{t.daily}</option>
+            <option value="weekly">{t.weekly}</option>
+            <option value="monthly">{t.monthly}</option>
+            <option value="yearly">{t.yearly}</option>
           </select>
         </div>
 

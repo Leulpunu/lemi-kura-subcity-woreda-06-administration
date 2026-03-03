@@ -2,54 +2,63 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { officesData } from '../data/offices';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
 import '../styles/ReportForm.css';
 
 const AnnualPlan = ({ language, toggleLanguage }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+
   const [selectedOffice, setSelectedOffice] = useState('');
   const [selectedTask, setSelectedTask] = useState('');
   const [annualTargets, setAnnualTargets] = useState({});
   const [kpiUnits, setKpiUnits] = useState({});
-  const [distributedPlans, setDistributedPlans] = useState({
-    monthly: {},
-    weekly: {},
-    daily: {}
-  });
+  const [distributedPlans, setDistributedPlans] = useState({ monthly: {}, weekly: {}, daily: {} });
   const [isDistributed, setIsDistributed] = useState(false);
   const [manualEntry, setManualEntry] = useState(false);
-  const navigate = useNavigate();
+  const [currentPlan, setCurrentPlan] = useState(null);
+  const [loadingPlan, setLoadingPlan] = useState(false);
 
-  const handleOfficeChange = (e) => {
-    setSelectedOffice(e.target.value);
-    setSelectedTask('');
+  const currentYear = new Date().getFullYear();
+  const planLocked = currentPlan && (currentPlan.status === 'submitted' || currentPlan.status === 'approved');
+
+  const selectedOfficeData = officesData.find((office) => office.id === selectedOffice);
+  const selectedTaskData = selectedOfficeData?.tasks.find((task) => task.id === selectedTask);
+
+  const resetPlanForm = () => {
     setAnnualTargets({});
     setKpiUnits({});
+    setDistributedPlans({ monthly: {}, weekly: {}, daily: {} });
     setIsDistributed(false);
+    setManualEntry(false);
+  };
+
+  const handleOfficeChange = (e) => {
+    if (planLocked) return;
+    setSelectedOffice(e.target.value);
+    setSelectedTask('');
+    resetPlanForm();
   };
 
   const handleTaskChange = (e) => {
+    if (planLocked) return;
     setSelectedTask(e.target.value);
-    setAnnualTargets({});
-    setKpiUnits({});
-    setIsDistributed(false);
+    resetPlanForm();
   };
 
   const handleAnnualTargetChange = (kpiId, value) => {
-    setAnnualTargets(prev => ({
-      ...prev,
-      [kpiId]: parseFloat(value) || 0
-    }));
+    if (planLocked) return;
+    setAnnualTargets((prev) => ({ ...prev, [kpiId]: parseFloat(value) || 0 }));
   };
 
   const handleKpiUnitChange = (kpiId, value) => {
-    setKpiUnits(prev => ({
-      ...prev,
-      [kpiId]: value
-    }));
+    if (planLocked) return;
+    setKpiUnits((prev) => ({ ...prev, [kpiId]: value }));
   };
 
   const handleManualPlanChange = (period, kpiId, value) => {
-    setDistributedPlans(prev => ({
+    if (planLocked) return;
+    setDistributedPlans((prev) => ({
       ...prev,
       [period]: {
         ...prev[period],
@@ -59,108 +68,128 @@ const AnnualPlan = ({ language, toggleLanguage }) => {
   };
 
   const distributePlan = () => {
-    // Check if all annual targets and units are entered
-    const kpis = selectedTaskData?.kpis || [];
-    const hasAllTargets = kpis.every(kpi => annualTargets[kpi.id] && annualTargets[kpi.id] > 0);
-    const hasAllUnits = kpis.every(kpi => kpiUnits[kpi.id] && kpiUnits[kpi.id].trim() !== '');
-    
+    if (planLocked || !selectedTaskData) return;
+
+    const kpis = selectedTaskData.kpis || [];
+    const hasAllTargets = kpis.every((kpi) => annualTargets[kpi.id] && annualTargets[kpi.id] > 0);
+    const hasAllUnits = kpis.every((kpi) => kpiUnits[kpi.id] && kpiUnits[kpi.id].trim() !== '');
+
     if (!hasAllTargets) {
-      alert(language === 'am' ? 'እባክዎ ሁሉንም አመታዊ ዒላማዎች ያስገቡ' : 'Please enter all annual targets');
+      alert('Please enter all annual targets');
       return;
     }
-    
     if (!hasAllUnits) {
-      alert(language === 'am' ? 'እባክዎ ሁሉንም አሃዶች ያስገቡ' : 'Please enter all units');
+      alert('Please enter all units');
       return;
     }
 
-    // Distribute annual targets to monthly, weekly, and daily
     const monthly = {};
     const weekly = {};
     const daily = {};
-
-    kpis.forEach(kpi => {
+    kpis.forEach((kpi) => {
       const annualTarget = annualTargets[kpi.id] || 0;
-      
-      // Divide by 12 months
       monthly[kpi.id] = annualTarget / 12;
-      
-      // Divide by 4 weeks per month (approximately)
       weekly[kpi.id] = annualTarget / 48;
-      
-      // Divide by 365 days per year (approximately)
       daily[kpi.id] = annualTarget / 365;
     });
 
-    setDistributedPlans({
-      monthly,
-      weekly,
-      daily
-    });
+    setDistributedPlans({ monthly, weekly, daily });
     setIsDistributed(true);
   };
 
-  const savePlan = () => {
+  const savePlan = async () => {
+    if (planLocked) {
+      alert('This plan is locked after submission. You can edit only when administrator requests changes.');
+      return;
+    }
     if (!isDistributed) {
-      alert(language === 'am' ? 'እባክዎ መጀመሪያ እቅዱን ያከፋፍሉ' : 'Please distribute the plan first');
+      alert('Please distribute the plan first');
       return;
     }
 
-    const planData = {
-      id: Date.now(),
-      officeId: selectedOffice,
-      taskId: selectedTask,
-      annualTargets,
-      kpiUnits,
-      distributedPlans,
-      year: new Date().getFullYear(),
-      submittedBy: user.id,
-      submittedAt: new Date().toISOString()
-    };
+    try {
+      const token = localStorage.getItem('token');
+      const response = await api.post('/annualPlans', {
+        officeId: selectedOffice,
+        taskId: selectedTask,
+        annualTargets,
+        kpiUnits,
+        distributedPlans,
+        year: currentYear
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
 
-    // Save to localStorage
-    const existingPlans = JSON.parse(localStorage.getItem('annualPlans') || '[]');
-    existingPlans.push(planData);
-    localStorage.setItem('annualPlans', JSON.stringify(existingPlans));
-
-    alert(language === 'am' ? 'እቅዱ ተሳካ ተቀምጧል' : 'Plan saved successfully');
-    navigate('/dashboard');
+      setCurrentPlan(response.data);
+      alert('Plan submitted to administrator and locked until review.');
+      navigate('/dashboard');
+    } catch (error) {
+      alert(error?.response?.data?.message || 'Failed to submit plan');
+    }
   };
 
-  const selectedOfficeData = officesData.find(office => office.id === selectedOffice);
-  const selectedTaskData = selectedOfficeData?.tasks.find(task => task.id === selectedTask);
+  useEffect(() => {
+    const loadPlan = async () => {
+      if (!selectedOffice || !selectedTask || !user) {
+        setCurrentPlan(null);
+        return;
+      }
+
+      setLoadingPlan(true);
+      try {
+        const token = localStorage.getItem('token');
+        const response = await api.get('/annualPlans', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: {
+            office_id: selectedOffice,
+            task_id: selectedTask,
+            year: currentYear
+          }
+        });
+
+        const plan = Array.isArray(response.data) && response.data.length > 0 ? response.data[0] : null;
+        setCurrentPlan(plan);
+
+        if (plan) {
+          setAnnualTargets(plan.annualTargets || {});
+          setKpiUnits(plan.kpiUnits || {});
+          setDistributedPlans(plan.distributedPlans || { monthly: {}, weekly: {}, daily: {} });
+          setIsDistributed(Boolean(plan.distributedPlans));
+        } else {
+          resetPlanForm();
+        }
+      } catch (error) {
+        setCurrentPlan(null);
+      } finally {
+        setLoadingPlan(false);
+      }
+    };
+
+    loadPlan();
+  }, [selectedOffice, selectedTask, user, currentYear]);
 
   return (
     <div className="daily-report">
       <div className="report-header">
         <button onClick={() => navigate('/dashboard')} className="btn-secondary back-button">
-          <i className="fas fa-arrow-left"></i> {language === 'am' ? 'ወደ ዳሽቦርድ ተመለስ' : 'Back to Dashboard'}
+          <i className="fas fa-arrow-left"></i> Back to Dashboard
         </button>
-        <h1>{language === 'am' ? 'አመታዊ እቅድ' : 'Annual Plan'}</h1>
-        <button
-          onClick={toggleLanguage}
-          className="language-toggle"
-          title={language === 'am' ? 'Switch to English' : 'አማርኛ ቀይር'}
-        >
-          {language === 'am' ? 'EN' : 'አማ'}
+        <h1>Annual Plan</h1>
+        <button onClick={toggleLanguage} className="language-toggle" title="Toggle language">
+          {language === 'am' ? 'EN' : 'AM'}
         </button>
       </div>
 
       <div className="report-form">
         <div className="form-group">
-          <label htmlFor="office">
-            {language === 'am' ? 'ቢሮ' : 'Office'}:
-          </label>
-          <select
-            id="office"
-            value={selectedOffice}
-            onChange={handleOfficeChange}
-            required
-          >
-            <option value="">{language === 'am' ? 'ቢሮ ይምረጡ' : 'Select Office'}</option>
+          <label htmlFor="office">Office:</label>
+          <select id="office" value={selectedOffice} onChange={handleOfficeChange} disabled={planLocked} required>
+            <option value="">Select Office</option>
             {officesData
-              .filter(office => user && user.accessibleOffices && user.accessibleOffices.includes(office.id))
-              .map(office => (
+              .filter((office) => user && user.accessibleOffices && user.accessibleOffices.includes(office.id))
+              .map((office) => (
                 <option key={office.id} value={office.id}>
                   {language === 'am' ? office.name_am : office.name_en}
                 </option>
@@ -170,17 +199,10 @@ const AnnualPlan = ({ language, toggleLanguage }) => {
 
         {selectedOffice && (
           <div className="form-group">
-            <label htmlFor="task">
-              {language === 'am' ? 'ተግባር' : 'Task'}:
-            </label>
-            <select
-              id="task"
-              value={selectedTask}
-              onChange={handleTaskChange}
-              required
-            >
-              <option value="">{language === 'am' ? 'ተግባር ይምረጡ' : 'Select Task'}</option>
-              {selectedOfficeData.tasks.map(task => (
+            <label htmlFor="task">Task:</label>
+            <select id="task" value={selectedTask} onChange={handleTaskChange} disabled={planLocked} required>
+              <option value="">Select Task</option>
+              {selectedOfficeData?.tasks.map((task) => (
                 <option key={task.id} value={task.id}>
                   {language === 'am' ? task.title_am : task.title_en}
                 </option>
@@ -189,30 +211,28 @@ const AnnualPlan = ({ language, toggleLanguage }) => {
           </div>
         )}
 
-        {selectedTask && (
+        {selectedTask && selectedTaskData && (
           <div className="kpi-section">
-            <h3>{language === 'am' ? 'አመታዊ የግብ አላማዎች' : 'Annual Targets'}</h3>
-            {selectedTaskData.kpis.map(kpi => (
+            <h3>Annual Targets</h3>
+            {selectedTaskData.kpis.map((kpi) => (
               <div key={kpi.id} className="form-group">
-                <label htmlFor={`unit-${kpi.id}`}>
-                  {language === 'am' ? kpi.name_am : kpi.name_en} - {language === 'am' ? 'አሃድ (Unit)' : 'Unit'}:
-                </label>
+                <label htmlFor={`unit-${kpi.id}`}>{language === 'am' ? kpi.name_am : kpi.name_en} - Unit:</label>
                 <input
                   type="text"
                   id={`unit-${kpi.id}`}
                   value={kpiUnits[kpi.id] || ''}
                   onChange={(e) => handleKpiUnitChange(kpi.id, e.target.value)}
-                  placeholder={language === 'am' ? 'አሃድ ያስገቡ (ሰዎች, ኪሎ ግራም...)' : 'Enter unit (persons, kg, etc.)'}
+                  disabled={planLocked}
+                  placeholder="Enter unit"
                   required
                 />
-                <label htmlFor={`annual-${kpi.id}`}>
-                  {language === 'am' ? kpi.name_am : kpi.name_en} - {language === 'am' ? 'ዒላማ (Target)' : 'Target'}:
-                </label>
+                <label htmlFor={`annual-${kpi.id}`}>{language === 'am' ? kpi.name_am : kpi.name_en} - Target:</label>
                 <input
                   type="number"
                   id={`annual-${kpi.id}`}
                   value={annualTargets[kpi.id] || ''}
                   onChange={(e) => handleAnnualTargetChange(kpi.id, e.target.value)}
+                  disabled={planLocked}
                   min="0"
                   step="0.01"
                   required
@@ -226,43 +246,43 @@ const AnnualPlan = ({ language, toggleLanguage }) => {
                   type="checkbox"
                   checked={manualEntry}
                   onChange={(e) => setManualEntry(e.target.checked)}
+                  disabled={planLocked}
                 />
-                {language === 'am' ? 'በተግባር እቅዱን አስገባ' : 'Enter plan manually'}
+                Enter plan manually
               </label>
             </div>
 
             <div className="button-group">
               {!manualEntry && (
-                <button type="button" onClick={distributePlan} className="submit-btn">
-                  {language === 'am' ? 'እቅዱን አከፋፍል' : 'Distribute Plan'}
+                <button type="button" onClick={distributePlan} className="submit-btn" disabled={planLocked}>
+                  Distribute Plan
                 </button>
               )}
               {manualEntry && (
-                <button type="button" onClick={() => setIsDistributed(true)} className="submit-btn">
-                  {language === 'am' ? 'በተግባር እቅዱን አስገባ' : 'Enter Manual Plan'}
+                <button type="button" onClick={() => setIsDistributed(true)} className="submit-btn" disabled={planLocked}>
+                  Enter Manual Plan
                 </button>
               )}
             </div>
           </div>
         )}
 
-        {isDistributed && (
+        {isDistributed && selectedTaskData && (
           <div className="kpi-section">
-            <h3>{language === 'am' ? (manualEntry ? 'በተግባር እቅዱን አስገባ' : 'የተከፋፈለ እቅድ') : (manualEntry ? 'Enter Manual Plan' : 'Distributed Plan')}</h3>
+            <h3>{manualEntry ? 'Enter Manual Plan' : 'Distributed Plan'}</h3>
 
             <div className="plan-distribution">
               <div className="plan-section">
-                <h4>{language === 'am' ? 'ወራዊ እቅድ' : 'Monthly Plan'}</h4>
-                {selectedTaskData.kpis.map(kpi => (
+                <h4>Monthly Plan</h4>
+                {selectedTaskData.kpis.map((kpi) => (
                   <div key={kpi.id} className="form-group">
-                    <label htmlFor={`monthly-${kpi.id}`}>
-                      {language === 'am' ? kpi.name_am : kpi.name_en} ({kpiUnits[kpi.id] || '-'}):
-                    </label>
+                    <label htmlFor={`monthly-${kpi.id}`}>{language === 'am' ? kpi.name_am : kpi.name_en} ({kpiUnits[kpi.id] || '-'})</label>
                     <input
                       type="number"
                       id={`monthly-${kpi.id}`}
                       value={distributedPlans.monthly[kpi.id] || ''}
                       onChange={(e) => handleManualPlanChange('monthly', kpi.id, e.target.value)}
+                      disabled={planLocked}
                       min="0"
                       step="0.01"
                       required
@@ -272,17 +292,16 @@ const AnnualPlan = ({ language, toggleLanguage }) => {
               </div>
 
               <div className="plan-section">
-                <h4>{language === 'am' ? 'ሳምንታዊ እቅድ' : 'Weekly Plan'}</h4>
-                {selectedTaskData.kpis.map(kpi => (
+                <h4>Weekly Plan</h4>
+                {selectedTaskData.kpis.map((kpi) => (
                   <div key={kpi.id} className="form-group">
-                    <label htmlFor={`weekly-${kpi.id}`}>
-                      {language === 'am' ? kpi.name_am : kpi.name_en} ({kpiUnits[kpi.id] || '-'}):
-                    </label>
+                    <label htmlFor={`weekly-${kpi.id}`}>{language === 'am' ? kpi.name_am : kpi.name_en} ({kpiUnits[kpi.id] || '-'})</label>
                     <input
                       type="number"
                       id={`weekly-${kpi.id}`}
                       value={distributedPlans.weekly[kpi.id] || ''}
                       onChange={(e) => handleManualPlanChange('weekly', kpi.id, e.target.value)}
+                      disabled={planLocked}
                       min="0"
                       step="0.01"
                       required
@@ -292,17 +311,16 @@ const AnnualPlan = ({ language, toggleLanguage }) => {
               </div>
 
               <div className="plan-section">
-                <h4>{language === 'am' ? 'ዕለታዊ እቅድ' : 'Daily Plan'}</h4>
-                {selectedTaskData.kpis.map(kpi => (
+                <h4>Daily Plan</h4>
+                {selectedTaskData.kpis.map((kpi) => (
                   <div key={kpi.id} className="form-group">
-                    <label htmlFor={`daily-${kpi.id}`}>
-                      {language === 'am' ? kpi.name_am : kpi.name_en} ({kpiUnits[kpi.id] || '-'}):
-                    </label>
+                    <label htmlFor={`daily-${kpi.id}`}>{language === 'am' ? kpi.name_am : kpi.name_en} ({kpiUnits[kpi.id] || '-'})</label>
                     <input
                       type="number"
                       id={`daily-${kpi.id}`}
                       value={distributedPlans.daily[kpi.id] || ''}
                       onChange={(e) => handleManualPlanChange('daily', kpi.id, e.target.value)}
+                      disabled={planLocked}
                       min="0"
                       step="0.01"
                       required
@@ -313,14 +331,25 @@ const AnnualPlan = ({ language, toggleLanguage }) => {
             </div>
 
             <div className="button-group">
-              <button type="button" onClick={savePlan} className="submit-btn">
-                {language === 'am' ? 'እቅዱን አስቀምጥ' : 'Save Plan'}
+              <button type="button" onClick={savePlan} className="submit-btn" disabled={planLocked}>
+                {currentPlan?.status === 'rejected' ? 'Resubmit Plan' : 'Submit Plan'}
               </button>
               <button type="button" onClick={() => navigate('/dashboard')} className="back-btn">
-                {language === 'am' ? 'ወደ ዳሽቦርድ ተመለስ' : 'Back to Dashboard'}
+                Back to Dashboard
               </button>
             </div>
           </div>
+        )}
+
+        {selectedTask && loadingPlan && <p>Loading plan status...</p>}
+        {selectedTask && currentPlan?.status === 'submitted' && (
+          <p style={{ color: '#b45309' }}>Your plan is submitted and locked until admin decision.</p>
+        )}
+        {selectedTask && currentPlan?.status === 'approved' && (
+          <p style={{ color: '#166534' }}>Your plan is approved and cannot be edited.</p>
+        )}
+        {selectedTask && currentPlan?.status === 'rejected' && (
+          <p style={{ color: '#991b1b' }}>Changes requested: {currentPlan.rejectionReason || ''}</p>
         )}
       </div>
     </div>
